@@ -280,6 +280,32 @@
     will-change: transform;
     image-rendering: pixelated;
   }
+  /* ── Water-collision FX ───────────────────────────────────────────── */
+  .water-ripple {
+    position: absolute;
+    top: 0; left: 0;
+    width: 8px; height: 8px;
+    margin-left: -6px;
+    margin-top: -6px;
+    border: 2px solid var(--biolum);
+    background: transparent;
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform, opacity;
+    image-rendering: pixelated;
+  }
+  .water-splash {
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 4px;
+    margin-left: -2px;
+    margin-top: -2px;
+    background: var(--sky);
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform, opacity;
+    image-rendering: pixelated;
+  }
   .tuna-sprite {
     position: absolute;
     top: 0;
@@ -1790,11 +1816,17 @@
       var blinkTimer = 0;
       var nextBlinkAt = 3 + Math.random() * 3;
       var idleBubbleTimer = 0;
+      var rippleTimer = 0;
       var lastTickTime = performance.now();
       var lastWagDur = 0;
       var EYE_OPEN  = '#B4D8EB';
       var EYE_CLOSED = '#0A1E3D';
       var eyeEl = document.getElementById('tuna-eye');
+
+      // Water-collision FX tuning
+      var RIPPLE_PERIOD_SCALE = 1.0;  // multiplier on (wagDur * 2)
+      var SPLASH_SPEED_GATE   = 5.0;  // splash starts above this px/frame
+      var SPLASH_PROBABILITY  = 0.28; // per-frame chance when above gate
 
       gsap.set(sprite, { scaleX: 1, scaleY: 1 });
 
@@ -1877,6 +1909,35 @@
           lastWagDur = wagDur;
         }
 
+        // ── Tail-wake ripples: emit each tail-wag cycle while in motion ─
+        rippleTimer += dt;
+        var ripplePeriod = wagDur * 2 * RIPPLE_PERIOD_SCALE;
+        if (visible && speed > 0.4 && rippleTimer >= ripplePeriod) {
+          rippleTimer = 0;
+          // Position behind the tuna along -velocity vector (~28px back)
+          var bx, by;
+          if (speed > 0.001) {
+            bx = pos.x - (vx / speed) * 28;
+            by = pos.y - (vy / speed) * 28;
+          } else {
+            bx = pos.x + (facingRight ? -28 : 28);
+            by = pos.y;
+          }
+          emitRipple(bx, by);
+        }
+
+        // ── Speed splash: high-velocity sideways droplets ────────────
+        if (visible && speed > SPLASH_SPEED_GATE && Math.random() < SPLASH_PROBABILITY) {
+          var perpX = -vy / speed;
+          var perpY =  vx / speed;
+          var sideSign = Math.random() < 0.5 ? 1 : -1;
+          var sx = pos.x + perpX * sideSign * 12 + (Math.random() - 0.5) * 6;
+          var sy = pos.y + perpY * sideSign * 12 + (Math.random() - 0.5) * 6;
+          var sdx = perpX * sideSign * (18 + Math.random() * 10) + (-vx / speed) * 6;
+          var sdy = perpY * sideSign * (18 + Math.random() * 10) + (-vy / speed) * 6;
+          emitSplash(sx, sy, sdx, sdy);
+        }
+
         // ── Eye blink ────────────────────────────────────────────────
         blinkTimer += dt;
         if (eyeEl && blinkTimer >= nextBlinkAt) {
@@ -1923,6 +1984,37 @@
           duration: 2.4 + Math.random(),
           ease: 'steps(8)',
           onComplete: function () { b.remove(); }
+        });
+      }
+
+      // Water-collision: hollow pixel ring expanding outward
+      function emitRipple(x, y) {
+        var r = document.createElement('span');
+        r.className = 'water-ripple';
+        trailHost.appendChild(r);
+        gsap.set(r, { x: x, y: y, scale: 1, opacity: 0.65 });
+        gsap.to(r, {
+          scale: 3.2,
+          opacity: 0,
+          duration: 0.55,
+          ease: 'steps(5)',
+          onComplete: function () { r.remove(); }
+        });
+      }
+
+      // Water-collision: tiny sideways droplet
+      function emitSplash(x, y, dx, dy) {
+        var s = document.createElement('span');
+        s.className = 'water-splash';
+        trailHost.appendChild(s);
+        gsap.set(s, { x: x, y: y, opacity: 0.85 });
+        gsap.to(s, {
+          x: x + dx,
+          y: y + dy + 8,    // slight downward drift (gravity hint)
+          opacity: 0,
+          duration: 0.7,
+          ease: 'steps(6)',
+          onComplete: function () { s.remove(); }
         });
       }
     })();
