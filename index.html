@@ -908,6 +908,111 @@
     image-rendering: pixelated;
   }
 
+  /* ── Splash overlay ──────────────────────────────────────────────── */
+  .splash {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: var(--abyss-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    overflow: hidden;
+    will-change: transform, opacity;
+    image-rendering: pixelated;
+  }
+  .splash-scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg, rgba(0,0,0,0.35) 0, rgba(0,0,0,0.35) 1px, transparent 1px, transparent 3px);
+    opacity: 0.7;
+    mix-blend-mode: multiply;
+  }
+  .splash-rush {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .splash-rush .rush-bubble {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--biolum);
+    bottom: -10px;
+    opacity: 0;
+    will-change: transform, opacity;
+    image-rendering: pixelated;
+  }
+  .splash-flash {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--biolum);
+    box-shadow: 0 0 24px var(--biolum), 0 0 48px rgba(94,244,208,0.6);
+    transform: translateY(-50%) scaleX(0);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .splash-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 24px;
+    max-width: 720px;
+  }
+  .splash-boot {
+    font-family: var(--body);
+    font-size: clamp(13px, 1.7vw, 18px);
+    line-height: 1.7;
+    color: var(--biolum);
+    text-align: left;
+    display: inline-block;
+    text-shadow: 0 0 6px rgba(94,244,208,0.35);
+  }
+  .boot-line {
+    white-space: pre;
+    letter-spacing: 0.04em;
+    min-height: 1.7em;
+  }
+  .splash-mark {
+    margin-top: 56px;
+    opacity: 0;
+  }
+  .splash-title {
+    font-family: var(--display);
+    font-size: clamp(28px, 6vw, 64px);
+    color: var(--white);
+    letter-spacing: 0.04em;
+    text-shadow: 4px 4px 0 var(--abyss-deep), 0 0 20px rgba(94,244,208,0.3);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .splash-sub {
+    font-family: var(--display);
+    font-size: 10px;
+    color: var(--biolum);
+    letter-spacing: 0.18em;
+  }
+  .splash-skip {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--display);
+    font-size: 9px;
+    color: var(--sand);
+    letter-spacing: 0.18em;
+    opacity: 0.5;
+    z-index: 3;
+    animation: blink steps(2) 1s infinite;
+  }
+
   /* ── FOUC-safe hero pending hide ─────────────────────────────────── */
   .hero-anim-pending .hero-h1,
   .hero-anim-pending .hero-sub,
@@ -945,10 +1050,32 @@
     .hero-anim-pending .scroll-hint,
     .hero-anim-pending .stage-label { opacity: 1; }
     .tuna-layer { display: none; }
+    .splash { display: none; }
   }
 </style>
 </head>
 <body>
+
+<!-- ─── Boot-dive splash (plays once on load) ───────────────────────── -->
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="splash-scanlines"></div>
+  <div class="splash-rush" id="splash-rush"></div>
+  <div class="splash-flash" id="splash-flash"></div>
+  <div class="splash-content">
+    <div class="splash-boot" id="splash-boot">
+      <p class="boot-line" data-text="&gt; TUNA.AI v1.0  //  PELAGIC RUNTIME"></p>
+      <p class="boot-line" data-text="&gt; CHECKING WATER PRESSURE.... [OK]"></p>
+      <p class="boot-line" data-text="&gt; BIOLUMINESCENCE........... [ONLINE]"></p>
+      <p class="boot-line" data-text="&gt; AGENT.MAIN................ [SYNCED]"></p>
+      <p class="boot-line" data-text="&gt; AWAITING CAPTAIN..."></p>
+    </div>
+    <div class="splash-mark" id="splash-mark">
+      <div class="splash-title">TUNA.AI</div>
+      <div class="splash-sub">// KEEP MOVING. OR STOP EXISTING.</div>
+    </div>
+  </div>
+  <div class="splash-skip" id="splash-skip">▼ PRESS ANY KEY TO DIVE</div>
+</div>
 
 <!-- Atmospheric layers -->
 <div class="ocean-bg"   aria-hidden="true"></div>
@@ -1576,6 +1703,126 @@
     host.appendChild(f);
   }
 
+  // ── Rush-bubble burst for the dive transition ───────────────────────
+  function spawnRushBubbles(host, count) {
+    for (var i = 0; i < count; i++) {
+      (function () {
+        var b = document.createElement('span');
+        b.className = 'rush-bubble';
+        var sz = 3 + Math.floor(Math.random() * 5);  // 3-7px
+        b.style.width  = sz + 'px';
+        b.style.height = sz + 'px';
+        b.style.left   = (Math.random() * 100) + '%';
+        host.appendChild(b);
+        gsap.fromTo(b,
+          { y: 0, opacity: 0 },
+          {
+            y: -window.innerHeight * (1.1 + Math.random() * 0.3),
+            x: (Math.random() - 0.5) * 36,
+            opacity: 0.85,
+            duration: 0.6 + Math.random() * 0.5,
+            delay: Math.random() * 0.25,
+            ease: 'power2.in',
+            onComplete: function () { b.remove(); }
+          });
+      })();
+    }
+  }
+
+  // ── Boot → mark → dive splash sequence ──────────────────────────────
+  // Calls onHeroCue ~0.1s into the dive (so hero entrance overlaps the
+  // splash exit). Calls onDone after the splash is fully cleared.
+  function playSplash(onHeroCue, onDone) {
+    var splash = document.getElementById('splash');
+    if (!splash) { if (onHeroCue) onHeroCue(); if (onDone) onDone(); return; }
+
+    var bootEl  = document.getElementById('splash-boot');
+    var bootLs  = splash.querySelectorAll('.boot-line');
+    var markEl  = document.getElementById('splash-mark');
+    var rushEl  = document.getElementById('splash-rush');
+    var flashEl = document.getElementById('splash-flash');
+    var skipEl  = document.getElementById('splash-skip');
+
+    var heroCued = false;
+    function cueHero() {
+      if (heroCued) return;
+      heroCued = true;
+      if (onHeroCue) onHeroCue();
+    }
+    function finish() {
+      splash.style.display = 'none';
+      cueHero();  // safety net if cue was skipped
+      if (onDone) onDone();
+    }
+
+    var master = gsap.timeline({ onComplete: finish });
+
+    // ── ACT 1: boot lines type in ─────────────────────────────────────
+    bootLs.forEach(function (line, i) {
+      var full = line.dataset.text;
+      line.textContent = '';
+      var obj = { i: 0 };
+      master.to(obj, {
+        i: full.length,
+        duration: Math.max(0.25, full.length * 0.022),
+        ease: 'none',
+        snap: { i: 1 },
+        onUpdate: function () { line.textContent = full.slice(0, Math.floor(obj.i)); },
+        onComplete: function () { line.textContent = full; }
+      });
+      if (i < bootLs.length - 1) master.to({}, { duration: 0.07 });
+    });
+
+    // brief hold so the user can read the last line
+    master.to({}, { duration: 0.28 });
+
+    // ── ACT 2: boot fades, brand mark resolves ────────────────────────
+    master.to(bootEl, { opacity: 0, duration: 0.3, ease: 'steps(4)' })
+          .fromTo(markEl,
+            { opacity: 0, scale: 0.92 },
+            { opacity: 1, scale: 1, duration: 0.4, ease: 'steps(6)' }, '<')
+          .to({}, { duration: 0.5 });
+
+    // ── ACT 3: dive transition ────────────────────────────────────────
+    // Rush bubbles fired at the moment the slide-up begins.
+    master.call(function () { spawnRushBubbles(rushEl, 50); });
+
+    // Biolum horizontal flash — water-surface tension breaking
+    master.fromTo(flashEl,
+      { scaleX: 0, opacity: 0 },
+      { scaleX: 1.4, opacity: 1, duration: 0.18, ease: 'power2.out' }, '+=0.04')
+      .to(flashEl, { opacity: 0, duration: 0.14, ease: 'steps(3)' });
+
+    // Splash overlay slides off the top, with a slight scale push
+    master.to(splash, {
+      yPercent: -100,
+      scale: 1.12,
+      duration: 0.7,
+      ease: 'power3.in'
+    }, '<-0.05');
+
+    master.to(skipEl, { opacity: 0, duration: 0.15 }, '<');
+
+    // Cue the hero entrance ~0.15s into the slide-up
+    master.call(cueHero, [], '<+0.15');
+
+    // ── Skip handler ─────────────────────────────────────────────────
+    function skip() {
+      if (master.timeScale() !== 1) return; // already skipping
+      master.timeScale(8);
+      removeSkipListeners();
+    }
+    function removeSkipListeners() {
+      document.removeEventListener('keydown', skip);
+      document.removeEventListener('click', skip);
+      document.removeEventListener('touchstart', skip);
+    }
+    document.addEventListener('keydown', skip);
+    document.addEventListener('click', skip);
+    document.addEventListener('touchstart', skip);
+    master.eventCallback('onComplete', function () { removeSkipListeners(); finish(); });
+  }
+
   ready(function () {
     spawnBubbles(document.getElementById('bubbles'), 36);
     spawnSpecks(document.getElementById('specks'), 50);
@@ -1594,33 +1841,40 @@
       document.documentElement.classList.remove('hero-anim-pending');
       document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('visible'); });
       typeTargets.forEach(function (el) { el.textContent = el.dataset.full; });
+      var sp = document.getElementById('splash');
+      if (sp) sp.style.display = 'none';
       return;
     }
 
     if (window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
-    document.documentElement.classList.remove('hero-anim-pending');
 
-    // ── Hero entrance (type-in + chips/buttons) ──────────────────────
-    var heroTL = gsap.timeline({ defaults: { ease: 'steps(8)', duration: 0.6 } });
-    heroTL.from('.hero .stage-label', { opacity: 0, y: 8, duration: 0.4 });
+    // ── Hero entrance is deferred until splash's dive phase ────────────
+    function runHeroEntrance() {
+      document.documentElement.classList.remove('hero-anim-pending');
+      var heroTL = gsap.timeline({ defaults: { ease: 'steps(8)', duration: 0.6 } });
+      heroTL.from('.hero .stage-label', { opacity: 0, y: 8, duration: 0.4 });
 
-    typeTargets.forEach(function (el, idx) {
-      var text = el.dataset.full;
-      var obj = { i: 0 };
-      heroTL.to(obj, {
-        i: text.length,
-        duration: text.length * 0.06,
-        ease: 'none',
-        snap: { i: 1 },
-        onUpdate: function () { el.textContent = text.slice(0, Math.floor(obj.i)); },
-        onComplete: function () { el.textContent = text; }
-      }, idx === 0 ? '>-0.1' : '+=0.1');
-    });
+      typeTargets.forEach(function (el, idx) {
+        var text = el.dataset.full;
+        var obj = { i: 0 };
+        heroTL.to(obj, {
+          i: text.length,
+          duration: text.length * 0.06,
+          ease: 'none',
+          snap: { i: 1 },
+          onUpdate: function () { el.textContent = text.slice(0, Math.floor(obj.i)); },
+          onComplete: function () { el.textContent = text; }
+        }, idx === 0 ? '>-0.1' : '+=0.1');
+      });
 
-    heroTL.from('.hero-sub',  { opacity: 0, y: 10, duration: 0.4 }, '+=0.1')
-          .from('.hero-chips .chip', { opacity: 0, x: -10, stagger: 0.08, duration: 0.3 }, '+=0.05')
-          .from('.hero-ctas .btn',   { opacity: 0, y: 10, stagger: 0.1,  duration: 0.4 }, '+=0.05')
-          .from('.scroll-hint',     { opacity: 0, duration: 0.4 }, '+=0.05');
+      heroTL.from('.hero-sub',  { opacity: 0, y: 10, duration: 0.4 }, '+=0.1')
+            .from('.hero-chips .chip', { opacity: 0, x: -10, stagger: 0.08, duration: 0.3 }, '+=0.05')
+            .from('.hero-ctas .btn',   { opacity: 0, y: 10, stagger: 0.1,  duration: 0.4 }, '+=0.05')
+            .from('.scroll-hint',     { opacity: 0, duration: 0.4 }, '+=0.05');
+    }
+
+    // Kick off splash → fires runHeroEntrance during the dive phase
+    playSplash(runHeroEntrance);
 
     // ── Section reveals via ScrollTrigger ────────────────────────────
     if (window.ScrollTrigger) {
