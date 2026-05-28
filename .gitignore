@@ -9,3 +9,4 @@
 # Node (in case someone adds tooling later)
 node_modules/
 npm-debug.log*
+.vercel
