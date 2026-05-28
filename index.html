@@ -982,10 +982,8 @@
     opacity: 0;
     pointer-events: none;
   }
-  .splash-crack path {
-    stroke-dasharray: 1500;
-    stroke-dashoffset: 1500;
-  }
+  /* No CSS rule for stroke-dasharray/dashoffset — those live on the
+     SVG path as presentation attributes so JS setAttribute wins cleanly. */
   .splash-flash {
     position: absolute;
     top: 50%;
@@ -1142,7 +1140,8 @@
     <path d="M 0,52 L 60,40 L 110,58 L 180,44 L 240,56 L 300,38 L 360,54 L 430,42 L 490,56 L 560,40 L 620,52 L 690,38 L 760,54 L 820,42 L 880,56 L 940,44 L 1000,52"
           stroke="#ffffff" stroke-width="2.5" fill="none"
           stroke-linejoin="miter" shape-rendering="crispEdges"
-          style="filter: drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 8px rgba(255,255,255,0.85)) drop-shadow(0 0 16px rgba(94,244,208,0.35));"/>
+          stroke-dasharray="1500" stroke-dashoffset="1500"
+          style="filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 6px rgba(255,255,255,0.75)) drop-shadow(0 0 12px rgba(255,255,255,0.35));"/>
   </svg>
   <!-- Brief surface-tension flash at the tear moment -->
   <div class="splash-flash" id="splash-flash"></div>
@@ -1927,16 +1926,16 @@
     // Fade content (so brand mark doesn't get sliced)
     master.to('.splash-content', { opacity: 0, duration: 0.2, ease: 'steps(3)' });
 
-    // Prep crack: hidden until fish starts drawing it
-    if (crackPath) {
-      master.set(crackEl, { opacity: 1 });
-      master.set(crackPath, { strokeDashoffset: 1500 });
-    }
+    // Crack layer + path start fully hidden (CSS opacity:0 +
+    // SVG attribute dashoffset=1500). DO NOT pre-set them via GSAP —
+    // we only want the crack to appear once the fish has actually
+    // entered the viewport (fishX > 0).
 
     // Fish position: start off-screen left
     master.set(fishEl, { x: -360, opacity: 0 });
+    var crackRevealed = false;
 
-    // ── Fish charges left-to-right; crack appears only behind the fish ──
+    // ── Fish charges left-to-right; crack appears ONLY where the fish has been ──
     master.to(fishEl, {
       x: function () { return window.innerWidth + 240; },
       opacity: 1,
@@ -1944,13 +1943,14 @@
       ease: 'none',
       onStart: function () { gsap.set(fishEl, { opacity: 1 }); },
       onUpdate: function () {
-        if (!crackPath) return;
-        // Drive crack draw by the fish's actual VIEWPORT x position.
-        // The fish has its origin at the center of the .splash-fish box
-        // (left:0 + the transform x). We treat its x as the leading edge.
         var fishX = parseFloat(gsap.getProperty(fishEl, 'x')) || 0;
+        if (fishX <= 0) return; // fish still off-screen left → no crack yet
+        if (!crackRevealed && crackEl) {
+          crackEl.style.opacity = '1';
+          crackRevealed = true;
+        }
+        if (!crackPath) return;
         var vw = window.innerWidth;
-        // Clamp so the crack only exists where the fish has actually been
         var p = Math.max(0, Math.min(1, fishX / vw));
         crackPath.setAttribute('stroke-dashoffset', String((1 - p) * 1500));
       }
