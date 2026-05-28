@@ -913,16 +913,22 @@
     position: fixed;
     inset: 0;
     z-index: 300;
-    background: var(--abyss-deep);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
+    background: transparent;        /* halves provide the bg */
     overflow: hidden;
-    will-change: transform, opacity;
+    will-change: opacity;
     image-rendering: pixelated;
   }
-  .splash-scanlines {
+  /* The two tearing halves. Each carries its own scanline texture via ::before */
+  .splash-half {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: var(--abyss-deep);
+    z-index: 1;
+    will-change: transform;
+  }
+  .splash-half::before {
+    content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -931,21 +937,54 @@
     opacity: 0.7;
     mix-blend-mode: multiply;
   }
+  .splash-half-top {
+    top: 0;
+    height: 50%;
+    /* When the tear opens, the bottom inner edge shows biolum glow */
+    box-shadow:
+      inset 0 -3px 0 var(--biolum),
+      inset 0 -8px 16px rgba(94,244,208,0.15);
+  }
+  .splash-half-bottom {
+    top: 50%;
+    height: 50%;
+    box-shadow:
+      inset 0 3px 0 var(--biolum),
+      inset 0 8px 16px rgba(94,244,208,0.15);
+  }
   .splash-rush {
     position: absolute;
     inset: 0;
     pointer-events: none;
     overflow: hidden;
+    z-index: 4;
   }
   .splash-rush .rush-bubble {
     position: absolute;
     width: 4px;
     height: 4px;
     background: var(--biolum);
-    bottom: -10px;
+    top: 50%;
+    left: 50%;
     opacity: 0;
     will-change: transform, opacity;
     image-rendering: pixelated;
+  }
+  /* Jagged tear-line (drawn via stroke-dashoffset) */
+  .splash-crack {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 60px;
+    margin-top: -30px;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .splash-crack path {
+    stroke-dasharray: 1500;
+    stroke-dashoffset: 1500;
   }
   .splash-flash {
     position: absolute;
@@ -958,13 +997,18 @@
     transform: translateY(-50%) scaleX(0);
     opacity: 0;
     pointer-events: none;
+    z-index: 6;
   }
   .splash-content {
-    position: relative;
-    z-index: 2;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
     text-align: center;
     padding: 24px;
-    max-width: 720px;
   }
   .splash-boot {
     font-family: var(--body);
@@ -1058,9 +1102,21 @@
 
 <!-- ─── Boot-dive splash (plays once on load) ───────────────────────── -->
 <div id="splash" class="splash" aria-hidden="true">
-  <div class="splash-scanlines"></div>
+  <!-- Two halves of the splash — they tear apart at the dive moment -->
+  <div class="splash-half splash-half-top"    id="splash-top"></div>
+  <div class="splash-half splash-half-bottom" id="splash-bottom"></div>
+  <!-- Rush bubbles erupt from the tear -->
   <div class="splash-rush" id="splash-rush"></div>
+  <!-- Jagged tear-line that draws across before the split -->
+  <svg class="splash-crack" id="splash-crack" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M 0,52 L 60,40 L 110,58 L 180,44 L 240,56 L 300,38 L 360,54 L 430,42 L 490,56 L 560,40 L 620,52 L 690,38 L 760,54 L 820,42 L 880,56 L 940,44 L 1000,52"
+          stroke="#5ef4d0" stroke-width="2.5" fill="none"
+          stroke-linejoin="miter" shape-rendering="crispEdges"
+          style="filter: drop-shadow(0 0 6px #5ef4d0) drop-shadow(0 0 12px rgba(94,244,208,0.7));"/>
+  </svg>
+  <!-- Brief surface-tension flash at the tear moment -->
   <div class="splash-flash" id="splash-flash"></div>
+  <!-- Boot log + brand mark (faded out before the tear) -->
   <div class="splash-content">
     <div class="splash-boot" id="splash-boot">
       <p class="boot-line" data-text="&gt; TUNA.AI v1.0  //  PELAGIC RUNTIME"></p>
@@ -1703,8 +1759,12 @@
     host.appendChild(f);
   }
 
-  // ── Rush-bubble burst for the dive transition ───────────────────────
+  // ── Rush-bubble burst: explodes outward from screen midline ─────────
+  // Used at the tear moment so bubbles erupt from the crack line in both
+  // directions (some up, some down) as the halves split apart.
   function spawnRushBubbles(host, count) {
+    var vh = window.innerHeight;
+    var vw = window.innerWidth;
     for (var i = 0; i < count; i++) {
       (function () {
         var b = document.createElement('span');
@@ -1712,17 +1772,21 @@
         var sz = 3 + Math.floor(Math.random() * 5);  // 3-7px
         b.style.width  = sz + 'px';
         b.style.height = sz + 'px';
-        b.style.left   = (Math.random() * 100) + '%';
+        // Spawn near midline (top:50%, left:50%), then offset by xs
+        var xs = (Math.random() - 0.5) * vw * 0.95;
         host.appendChild(b);
+        // Direction: 65% up, 35% down, all with horizontal spread
+        var goesUp = Math.random() < 0.65;
+        var yTravel = (goesUp ? -1 : 1) * vh * (0.55 + Math.random() * 0.45);
         gsap.fromTo(b,
-          { y: 0, opacity: 0 },
+          { x: xs, y: 0, opacity: 0 },
           {
-            y: -window.innerHeight * (1.1 + Math.random() * 0.3),
-            x: (Math.random() - 0.5) * 36,
+            x: xs + (Math.random() - 0.5) * 80,
+            y: yTravel,
             opacity: 0.85,
-            duration: 0.6 + Math.random() * 0.5,
-            delay: Math.random() * 0.25,
-            ease: 'power2.in',
+            duration: 0.55 + Math.random() * 0.55,
+            delay: Math.random() * 0.18,
+            ease: 'power2.out',
             onComplete: function () { b.remove(); }
           });
       })();
@@ -1783,28 +1847,43 @@
             { opacity: 1, scale: 1, duration: 0.4, ease: 'steps(6)' }, '<')
           .to({}, { duration: 0.5 });
 
-    // ── ACT 3: dive transition ────────────────────────────────────────
-    // Rush bubbles fired at the moment the slide-up begins.
-    master.call(function () { spawnRushBubbles(rushEl, 50); });
+    // ── ACT 3: tear-open transition ───────────────────────────────────
+    var topEl    = document.getElementById('splash-top');
+    var bottomEl = document.getElementById('splash-bottom');
+    var crackEl  = document.getElementById('splash-crack');
+    var crackPath = crackEl ? crackEl.querySelector('path') : null;
 
-    // Biolum horizontal flash — water-surface tension breaking
+    // Fade content (so the brand mark doesn't get sliced by the tear)
+    master.to('.splash-content', { opacity: 0, duration: 0.2, ease: 'steps(3)' });
+
+    // Jagged crack draws across the midline
+    if (crackPath) {
+      // Reveal the SVG layer
+      master.set(crackEl, { opacity: 1 });
+      master.to(crackPath, {
+        strokeDashoffset: 0,
+        duration: 0.22,
+        ease: 'none'
+      });
+    }
+
+    // Surface-tension flash blasts horizontally — pressure release
     master.fromTo(flashEl,
       { scaleX: 0, opacity: 0 },
-      { scaleX: 1.4, opacity: 1, duration: 0.18, ease: 'power2.out' }, '+=0.04')
-      .to(flashEl, { opacity: 0, duration: 0.14, ease: 'steps(3)' });
+      { scaleX: 1.4, opacity: 1, duration: 0.14, ease: 'power2.out' }, '-=0.04')
+      .to(flashEl, { opacity: 0, duration: 0.18, ease: 'steps(3)' });
 
-    // Splash overlay slides off the top, with a slight scale push
-    master.to(splash, {
-      yPercent: -100,
-      scale: 1.12,
-      duration: 0.7,
-      ease: 'power3.in'
-    }, '<-0.05');
+    // Rush bubbles erupt outward from the tear line
+    master.call(function () { spawnRushBubbles(rushEl, 60); }, [], '<-0.05');
 
-    master.to(skipEl, { opacity: 0, duration: 0.15 }, '<');
+    // TEAR: the two halves split apart along the midline
+    master.to(topEl,    { yPercent: -100, duration: 0.7, ease: 'power3.in' }, 'tear')
+          .to(bottomEl, { yPercent:  100, duration: 0.7, ease: 'power3.in' }, 'tear')
+          .to(crackEl,  { opacity: 0,     duration: 0.3, ease: 'steps(3)' }, 'tear+=0.1')
+          .to(skipEl,   { opacity: 0,     duration: 0.15 }, 'tear');
 
-    // Cue the hero entrance ~0.15s into the slide-up
-    master.call(cueHero, [], '<+0.15');
+    // Cue the hero entrance ~0.15s into the tear
+    master.call(cueHero, [], 'tear+=0.15');
 
     // ── Skip handler ─────────────────────────────────────────────────
     function skip() {
