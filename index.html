@@ -1072,6 +1072,27 @@
     animation: blink steps(2) 1s infinite;
   }
 
+  /* ── Stage-jump toast ─────────────────────────────────────────────── */
+  .jump-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--display);
+    font-size: clamp(11px, 1.5vw, 16px);
+    color: var(--biolum);
+    background: var(--abyss);
+    border: 3px solid var(--biolum);
+    padding: 16px 28px;
+    box-shadow: 6px 6px 0 var(--shadow-2), inset 0 0 0 2px var(--abyss-deep);
+    letter-spacing: 0.12em;
+    z-index: 200;
+    pointer-events: none;
+    text-transform: uppercase;
+    text-align: center;
+    image-rendering: pixelated;
+  }
+
   /* ── FOUC-safe hero pending hide ─────────────────────────────────── */
   .hero-anim-pending .hero-h1,
   .hero-anim-pending .hero-sub,
@@ -2380,8 +2401,18 @@
 
         prev.x = pos.x;
         prev.y = pos.y;
+
+        // Expose state for the interactivity layer (pet-the-tuna detection)
+        window.__tunaState = { x: pos.x, y: pos.y, visible: visible };
       }
       requestAnimationFrame(tick);
+
+      // Externally-triggerable blink (used when user clicks the tuna)
+      window.__tunaBlink = function () {
+        if (!eyeEl) return;
+        eyeEl.setAttribute('fill', EYE_CLOSED);
+        setTimeout(function () { eyeEl.setAttribute('fill', EYE_OPEN); }, 140);
+      };
 
       // Pixel bubble emitter (one shot)
       function spawnIdleBubble(x, y) {
@@ -2430,6 +2461,187 @@
           ease: 'steps(6)',
           onComplete: function () { s.remove(); }
         });
+      }
+    })();
+
+    // ─────────────────────────────────────────────────────────────────
+    // INTERACTIVITY LAYER — click splash, pet tuna, stage jump, konami
+    // ─────────────────────────────────────────────────────────────────
+    (function initInteractivity() {
+      var splashEl = document.getElementById('splash');
+      var bubblesHost = document.getElementById('bubbles');
+
+      function splashHidden() {
+        return !splashEl || splashEl.style.display === 'none';
+      }
+
+      // ── 1) Click splash + 2) Pet-the-tuna (combined pointerdown) ────
+      document.addEventListener('pointerdown', function (e) {
+        if (!splashHidden()) return;
+        spawnClickBubbles(e.clientX, e.clientY);
+
+        var t = window.__tunaState;
+        if (t && t.visible) {
+          var dx = e.clientX - t.x;
+          var dy = e.clientY - t.y;
+          if (dx * dx + dy * dy < 70 * 70) {
+            spawnTunaSparkles(t.x, t.y);
+            if (window.__tunaBlink) window.__tunaBlink();
+          }
+        }
+      });
+
+      function spawnClickBubbles(x, y) {
+        for (var i = 0; i < 3; i++) {
+          (function () {
+            var b = document.createElement('span');
+            var color = Math.random() < 0.7 ? 'var(--biolum)' : 'var(--sand)';
+            var sz = 2 + Math.floor(Math.random() * 3);
+            b.style.cssText =
+              'position:fixed;left:0;top:0;width:' + sz + 'px;height:' + sz + 'px;' +
+              'background:' + color + ';pointer-events:none;z-index:25;image-rendering:pixelated;';
+            document.body.appendChild(b);
+            var xs = x + (Math.random() - 0.5) * 6;
+            gsap.fromTo(b,
+              { x: xs, y: y, opacity: 0.9 },
+              {
+                x: xs + (Math.random() - 0.5) * 24,
+                y: y - 30 - Math.random() * 40,
+                opacity: 0,
+                duration: 0.7 + Math.random() * 0.4,
+                ease: 'power2.out',
+                onComplete: function () { b.remove(); }
+              });
+          })();
+        }
+      }
+
+      function spawnTunaSparkles(x, y) {
+        for (var i = 0; i < 8; i++) {
+          (function (idx) {
+            var s = document.createElement('span');
+            s.style.cssText =
+              'position:fixed;left:0;top:0;width:5px;height:5px;' +
+              'background:var(--biolum);box-shadow:0 0 6px var(--biolum);' +
+              'pointer-events:none;z-index:35;image-rendering:pixelated;';
+            document.body.appendChild(s);
+            var angle = (idx / 8) * Math.PI * 2;
+            var dist  = 30 + Math.random() * 25;
+            gsap.fromTo(s,
+              { x: x, y: y, opacity: 1, scale: 1 },
+              {
+                x: x + Math.cos(angle) * dist,
+                y: y + Math.sin(angle) * dist,
+                opacity: 0,
+                scale: 0.3,
+                duration: 0.6,
+                ease: 'steps(5)',
+                onComplete: function () { s.remove(); }
+              });
+          })(i);
+        }
+      }
+
+      // ── 3) Stage jump on number keys (0-8) ──────────────────────────
+      var STAGE_TARGETS = ['#top', '#biology', '.manifesto', '#problem',
+                           '#what-we-do', '#why-win', '#founders', '#why-now', '#contact'];
+      var STAGE_NAMES   = ['SURFACE', 'BIOLOGY', 'DIRECTIVE', 'THE PROBLEM',
+                           'ABILITIES', 'WHY WE WIN', 'CHARACTER SELECT', 'WHY NOW', 'GAME OVER'];
+
+      function showJumpToast(text, hold) {
+        var t = document.createElement('div');
+        t.className = 'jump-toast';
+        t.textContent = text;
+        document.body.appendChild(t);
+        gsap.fromTo(t,
+          { scale: 0.85, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.2, ease: 'steps(4)' });
+        gsap.to(t, {
+          opacity: 0,
+          duration: 0.35,
+          delay: hold || 0.85,
+          ease: 'steps(3)',
+          onComplete: function () { t.remove(); }
+        });
+      }
+
+      // ── 4) Konami code (UUDDLRLRBA) ─────────────────────────────────
+      var KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+                    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+      var konamiProgress = 0;
+
+      document.addEventListener('keydown', function (e) {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        var active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+        if (!splashHidden()) return;
+
+        var k = e.key;
+
+        // Stage jump
+        if (k >= '0' && k <= '8') {
+          e.preventDefault();
+          var idx = parseInt(k, 10);
+          var sec = document.querySelector(STAGE_TARGETS[idx]);
+          if (sec) {
+            sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            var prefix = idx === 0 ? '★ ' : '▶ STAGE 0' + idx + ' — ';
+            showJumpToast(prefix + STAGE_NAMES[idx]);
+          }
+          konamiProgress = 0;
+          return;
+        }
+
+        // Konami progress
+        var expected = KONAMI[konamiProgress];
+        var keyLower = k.length === 1 ? k.toLowerCase() : k;
+        var expLower = expected.length === 1 ? expected.toLowerCase() : expected;
+        if (keyLower === expLower) {
+          konamiProgress++;
+          if (konamiProgress === KONAMI.length) {
+            konamiProgress = 0;
+            triggerKonami();
+          }
+        } else if (keyLower === KONAMI[0].toLowerCase()) {
+          konamiProgress = 1;
+        } else {
+          konamiProgress = 0;
+        }
+      });
+
+      function triggerKonami() {
+        showJumpToast('★ TUNA MODE UNLOCKED ★', 1.6);
+        shakeScreen(8, 0.4);
+        spawnKonamiShower(60);
+      }
+
+      function spawnKonamiShower(count) {
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        for (var i = 0; i < count; i++) {
+          (function () {
+            var b = document.createElement('span');
+            var sz = 3 + Math.floor(Math.random() * 5);
+            b.style.cssText =
+              'position:fixed;left:50%;top:50%;width:' + sz + 'px;height:' + sz + 'px;' +
+              'background:var(--biolum);pointer-events:none;z-index:25;image-rendering:pixelated;';
+            document.body.appendChild(b);
+            var xs = (Math.random() - 0.5) * vw * 0.95;
+            var goesUp = Math.random() < 0.6;
+            var yTravel = (goesUp ? -1 : 1) * vh * (0.5 + Math.random() * 0.5);
+            gsap.fromTo(b,
+              { x: xs, y: 0, opacity: 0 },
+              {
+                x: xs + (Math.random() - 0.5) * 80,
+                y: yTravel,
+                opacity: 0.85,
+                duration: 0.6 + Math.random() * 0.5,
+                delay: Math.random() * 0.2,
+                ease: 'power2.out',
+                onComplete: function () { b.remove(); }
+              });
+          })();
+        }
       }
     })();
 
