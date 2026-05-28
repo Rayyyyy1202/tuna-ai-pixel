@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUNA.AI — KEEP MOVING. OR STOP EXISTING.</title>
+<meta name="description" content="TUNA.AI builds agents that design and ship software for enterprises. Ship in days, not quarters.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+<script src="https://unpkg.com/gsap@3.13.0/dist/gsap.min.js" defer></script>
+<script src="https://unpkg.com/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
+
+<script>
+  (function () {
+    var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!rm) document.documentElement.classList.add('hero-anim-pending');
+  })();
+</script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* ── Pixel palette (10 colors, locked) ────────────────── */
+    --abyss-deep: #04060f;
+    --abyss:      #0a1428;
+    --shallow:    #1a3a5a;
+    --surface:    #3a6dc7;
+    --sky:        #7aafe6;
+    --sand:       #f4e8c1;
+    --neon:       #00b0ff;
+    --biolum:     #5ef4d0;
+    --blood:      #ff4757;
+    --white:      #fefefe;
+
+    --shadow-1:  rgba(0,0,0,0.45);
+    --shadow-2:  rgba(0,0,0,0.7);
+
+    --display: 'Press Start 2P', monospace;
+    --body:    'VT323', ui-monospace, monospace;
+    --pxsize:  4px;  /* logical pixel unit for borders/offsets */
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--abyss-deep);
+    color: var(--sand);
+    font-family: var(--body);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.45;
+    overflow-x: hidden;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+  }
+
+  ::selection { background: var(--biolum); color: var(--abyss); }
+
+  /* ── Persistent ocean background ─────────────────────────────────────── */
+  .ocean-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg,
+        var(--surface)    0%,
+        var(--shallow)   28%,
+        var(--abyss)     58%,
+        var(--abyss-deep) 90%);
+  }
+
+  /* ── Bayer 4×4 dither overlay (pixel-art atmospheric texture) ───────── */
+  .dither {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image:
+      linear-gradient(45deg, transparent 25%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,0.5) 50%, transparent 50%, transparent 75%, rgba(0,0,0,0.5) 75%);
+    background-size: 4px 4px;
+    mix-blend-mode: multiply;
+  }
+
+  /* ── CRT scanlines (subtle, doesn't move) ──────────────────────────── */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.18) 0,
+        rgba(0,0,0,0.18) 1px,
+        transparent 1px,
+        transparent 3px);
+    opacity: 0.55;
+    mix-blend-mode: multiply;
+  }
+
+  /* ── Vignette ──────────────────────────────────────────────────────── */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.45) 100%);
+  }
+
+  /* ── Pixel bubbles ─────────────────────────────────────────────────── */
+  .bubbles {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .pix-bubble {
+    position: absolute;
+    bottom: -10px;
+    width: 4px;
+    height: 4px;
+    background: var(--biolum);
+    box-shadow:
+      4px 0 0 var(--biolum),
+      0 -4px 0 var(--biolum),
+      4px -4px 0 transparent;
+    opacity: 0;
+    animation: bubbleUp linear infinite;
+  }
+  .pix-bubble.tiny {
+    width: 4px;
+    height: 4px;
+    box-shadow: none;
+    background: rgba(94,244,208,0.6);
+  }
+  @keyframes bubbleUp {
+    0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+    10%  { opacity: 0.7; }
+    50%  { transform: translate3d(12px, -50vh, 0); opacity: 0.55; }
+    100% { transform: translate3d(-12px, -110vh, 0); opacity: 0; }
+  }
+
+  /* ── Bioluminescent specks (flicker) ───────────────────────────────── */
+  .specks {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .speck {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--biolum);
+    box-shadow: 0 0 0 1px var(--shallow);
+    image-rendering: pixelated;
+    animation: speckBlink steps(2) infinite;
+  }
+  @keyframes speckBlink {
+    0%, 100% { opacity: 0.15; transform: scale(0.7); }
+    50%      { opacity: 1;    transform: scale(1); }
+  }
+
+  /* ── HUD: depth meter ──────────────────────────────────────────────── */
+  .hud-depth {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--abyss);
+    border: 2px solid var(--neon);
+    box-shadow:
+      4px 4px 0 var(--shadow-2),
+      inset 0 0 0 1px var(--abyss-deep);
+    font-family: var(--display);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--sand);
+    text-transform: uppercase;
+  }
+  .hud-depth-label { color: var(--biolum); }
+  .hud-depth-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--abyss-deep);
+    border: 1px solid var(--shallow);
+    position: relative;
+    overflow: hidden;
+  }
+  .hud-depth-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(90deg, transparent 0, transparent 24%, rgba(0,0,0,0.4) 25%, transparent 26%);
+    background-size: 8px 100%;
+  }
+  .hud-depth-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--biolum);
+    box-shadow: 0 0 0 1px var(--neon);
+    transition: width 0.18s linear;
+  }
+  .hud-depth-value { min-width: 56px; text-align: right; color: var(--biolum); }
+  @media (max-width: 640px) { .hud-depth-bar { width: 60px; } .hud-depth-value { min-width: 40px; } }
+
+  /* ── Nav ──────────────────────────────────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .brand {
+    font-family: var(--display);
+    font-size: 12px;
+    color: var(--white);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    padding: 10px 14px;
+    background: var(--abyss);
+    border: 2px solid var(--neon);
+    box-shadow:
+      4px 4px 0 var(--shadow-2),
+      inset 0 0 0 1px var(--abyss-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-star {
+    color: var(--biolum);
+    animation: starBlink steps(2) 1.4s infinite;
+  }
+  @keyframes starBlink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.3; }
+  }
+
+  /* ── Persistent tuna sprite layer ──────────────────────────────────── */
+  .tuna-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 1;
+  }
+  .tuna-trail {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .trail-pix {
+    position: absolute;
+    top: 0; left: 0;
+    width: 8px; height: 8px;
+    margin-left: -4px;
+    margin-top: -4px;
+    background: var(--biolum);
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform;
+    image-rendering: pixelated;
+  }
+  .tuna-sprite {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 106px;
+    margin-left: -100px;
+    margin-top: -53px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    will-change: transform;
+    opacity: 0;
+    --wag-dur: 0.22s;
+  }
+  .tuna-sprite svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  /* Tail group: rotates around the tail-body joint (48, 64) in viewBox coords */
+  .tail-group {
+    transform-box: view-box;
+    transform-origin: 48px 64px;
+    animation: tailWag var(--wag-dur, 0.22s) steps(1) infinite alternate;
+  }
+  @keyframes tailWag {
+    from { transform: rotate(-7deg); }
+    to   { transform: rotate(7deg); }
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  main {
+    position: relative;
+    z-index: 10;
+  }
+  section {
+    position: relative;
+    padding: 120px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .narrow { max-width: 720px; margin: 0 auto; }
+
+  /* ── Common: stage label ──────────────────────────────────────────── */
+  .stage-label {
+    display: inline-block;
+    font-family: var(--display);
+    font-size: 10px;
+    line-height: 1.3;
+    letter-spacing: 0.08em;
+    color: var(--biolum);
+    background: var(--abyss);
+    border: 2px solid var(--biolum);
+    padding: 8px 12px;
+    margin-bottom: 36px;
+    box-shadow: 4px 4px 0 var(--shadow-2);
+  }
+  .stage-label .pulse { animation: starBlink steps(2) 1s infinite; }
+
+  /* ── HERO ───────────────────────────────────────────────────────────── */
+  .hero {
+    min-height: 100vh;
+    padding-top: 22vh;
+    padding-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+  .hero-h1 {
+    font-family: var(--display);
+    font-size: clamp(20px, 4.5vw, 56px);
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--white);
+    margin-bottom: 28px;
+    text-shadow: 4px 4px 0 var(--abyss-deep);
+    text-transform: uppercase;
+  }
+  .hero-h1 .line { display: block; }
+  .hero-h1 .line-2 {
+    color: var(--biolum);
+    text-shadow:
+      4px 4px 0 var(--abyss-deep),
+      0 0 16px rgba(94,244,208,0.4);
+  }
+  .hero-h1 .blink { animation: blink steps(2) 0.6s infinite; color: var(--biolum); }
+  @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+
+  .hero-sub {
+    max-width: 580px;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--sand);
+    margin-bottom: 36px;
+  }
+  .hero-sub .hl { color: var(--biolum); }
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 44px;
+  }
+  .chip {
+    font-family: var(--display);
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sand);
+    padding: 10px 12px;
+    border: 2px solid var(--shallow);
+    background: var(--abyss);
+    box-shadow: 4px 4px 0 var(--shadow-2);
+  }
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    margin-bottom: 72px;
+  }
+
+  /* ── Pixel buttons ─────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 16px 22px;
+    border: 3px solid var(--abyss-deep);
+    background: var(--biolum);
+    color: var(--abyss);
+    box-shadow:
+      4px 4px 0 var(--abyss-deep),
+      inset 0 0 0 2px var(--white);
+    cursor: pointer;
+    position: relative;
+    will-change: transform;
+    transition: transform 0.05s linear;
+  }
+  .btn::before {
+    content: '[';
+    margin-right: 2px;
+    color: var(--abyss);
+  }
+  .btn::after {
+    content: ']';
+    margin-left: 2px;
+    color: var(--abyss);
+  }
+  .btn:hover {
+    background: var(--white);
+    color: var(--biolum);
+    box-shadow:
+      6px 6px 0 var(--abyss-deep),
+      inset 0 0 0 2px var(--abyss);
+  }
+  .btn:hover::before, .btn:hover::after { color: var(--biolum); }
+  .btn:active {
+    transform: translate(4px, 4px);
+    box-shadow:
+      0 0 0 var(--abyss-deep),
+      inset 0 0 0 2px var(--white);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--biolum);
+    box-shadow:
+      4px 4px 0 var(--abyss-deep),
+      inset 0 0 0 2px var(--biolum);
+  }
+  .btn-ghost::before, .btn-ghost::after { color: var(--biolum); }
+  .btn-ghost:hover {
+    background: var(--biolum);
+    color: var(--abyss);
+  }
+
+  /* Scroll hint */
+  .scroll-hint {
+    font-family: var(--display);
+    font-size: 9px;
+    color: var(--biolum);
+    letter-spacing: 0.16em;
+    text-align: center;
+  }
+  .scroll-hint .arrow {
+    display: block;
+    margin-top: 12px;
+    animation: descendArrow steps(2) 1s infinite;
+  }
+  @keyframes descendArrow {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(4px); }
+  }
+
+  /* ── Sections common ──────────────────────────────────────────────── */
+  .section-title {
+    font-family: var(--display);
+    font-size: clamp(18px, 3vw, 32px);
+    line-height: 1.4;
+    color: var(--white);
+    margin-bottom: 36px;
+    text-transform: uppercase;
+    text-shadow: 3px 3px 0 var(--abyss-deep);
+  }
+  .section-title .hl {
+    color: var(--biolum);
+    text-shadow: 3px 3px 0 var(--abyss-deep), 0 0 12px rgba(94,244,208,0.35);
+  }
+  .section-body {
+    font-size: 22px;
+    line-height: 1.55;
+    color: var(--sand);
+    margin-bottom: 18px;
+  }
+  .section-body strong { color: var(--biolum); font-weight: 400; }
+  .section-body em { color: var(--white); font-style: normal; text-decoration: underline; text-decoration-color: var(--biolum); }
+
+  /* ── Biology grid ─────────────────────────────────────────────────── */
+  .biology-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .biology-diagram {
+    aspect-ratio: 1;
+    background: var(--abyss);
+    border: 3px solid var(--neon);
+    box-shadow: 6px 6px 0 var(--shadow-2);
+    position: relative;
+    padding: 20px;
+  }
+  .biology-diagram svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .biology-tag {
+    position: absolute;
+    font-family: var(--display);
+    font-size: 8px;
+    color: var(--biolum);
+    background: var(--abyss-deep);
+    padding: 4px 6px;
+    border: 1px solid var(--biolum);
+  }
+  .biology-tag-1 { top: 30%; left: -28px; }
+  .biology-tag-2 { bottom: 18%; right: -32px; }
+
+  /* ── Manifesto ───────────────────────────────────────────────────── */
+  .manifesto {
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .manifesto-text {
+    font-family: var(--display);
+    font-size: clamp(24px, 6vw, 84px);
+    line-height: 1.4;
+    color: var(--white);
+    letter-spacing: 0.04em;
+    padding: 0 24px;
+    text-shadow: 6px 6px 0 var(--abyss-deep);
+  }
+  .manifesto-text .stop {
+    color: var(--biolum);
+    text-shadow: 6px 6px 0 var(--abyss-deep), 0 0 24px rgba(94,244,208,0.55);
+  }
+  .manifesto-thesis {
+    font-family: var(--display);
+    font-size: 11px;
+    color: var(--sand);
+    margin-top: 40px;
+    letter-spacing: 0.18em;
+  }
+
+  /* ── Problem ─────────────────────────────────────────────────────── */
+  .quote-block {
+    border-left: 6px solid var(--biolum);
+    padding: 8px 0 8px 28px;
+    margin-bottom: 36px;
+  }
+  .quote-mark {
+    font-family: var(--display);
+    font-size: 36px;
+    color: var(--biolum);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .quote-text {
+    font-size: 24px;
+    line-height: 1.5;
+    color: var(--white);
+  }
+  .punchline {
+    font-family: var(--display);
+    font-size: clamp(14px, 2.4vw, 22px);
+    color: var(--blood);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 32px;
+    text-shadow: 3px 3px 0 var(--abyss-deep);
+    line-height: 1.4;
+  }
+
+  /* ── Stats / Pillars ─────────────────────────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin: 36px 0 56px;
+  }
+  .stat-card {
+    background: var(--abyss);
+    border: 3px solid var(--shallow);
+    padding: 22px 18px;
+    box-shadow: 6px 6px 0 var(--shadow-2);
+    position: relative;
+    transition: border-color 0.05s linear, transform 0.05s linear;
+  }
+  .stat-card::before,
+  .stat-card::after,
+  .stat-card .corner-tl,
+  .stat-card .corner-bl {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--biolum);
+    opacity: 0;
+    transition: opacity 0.08s linear;
+  }
+  .stat-card::before { top: -4px; right: -4px; }
+  .stat-card::after  { bottom: -4px; right: -4px; }
+  .stat-card .corner-tl { top: -4px; left: -4px; }
+  .stat-card .corner-bl { bottom: -4px; left: -4px; }
+  .stat-card:hover {
+    border-color: var(--biolum);
+    transform: translate(-2px, -2px);
+  }
+  .stat-card:hover::before,
+  .stat-card:hover::after,
+  .stat-card:hover .corner-tl,
+  .stat-card:hover .corner-bl { opacity: 1; }
+
+  .stat-num {
+    font-family: var(--display);
+    font-size: 10px;
+    color: var(--biolum);
+    margin-bottom: 12px;
+    letter-spacing: 0.08em;
+  }
+  .stat-title {
+    font-family: var(--display);
+    font-size: 13px;
+    color: var(--white);
+    line-height: 1.5;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .stat-sub {
+    font-size: 18px;
+    line-height: 1.45;
+    color: var(--sand);
+  }
+
+  /* ── Counter (arcade scoreboard) ─────────────────────────────────── */
+  .scoreboard {
+    margin: 64px auto;
+    padding: 36px 28px 28px;
+    background: var(--abyss);
+    border: 3px solid var(--neon);
+    box-shadow: 8px 8px 0 var(--shadow-2);
+    max-width: 720px;
+    text-align: center;
+    position: relative;
+  }
+  .scoreboard::before {
+    content: 'HI-SCORE';
+    position: absolute;
+    top: -12px;
+    left: 24px;
+    background: var(--neon);
+    color: var(--abyss);
+    font-family: var(--display);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+  }
+  .score-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .score-digit {
+    width: 56px;
+    height: 76px;
+    background: var(--abyss-deep);
+    border: 2px solid var(--biolum);
+    color: var(--biolum);
+    font-family: var(--display);
+    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 0 16px rgba(94,244,208,0.65);
+    will-change: transform;
+  }
+  @media (max-width: 640px) {
+    .score-digit { width: 38px; height: 56px; font-size: 24px; }
+  }
+  .score-label {
+    font-family: var(--display);
+    font-size: 9px;
+    color: var(--neon);
+    letter-spacing: 0.16em;
+    margin-bottom: 18px;
+  }
+  .score-caption {
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--sand);
+    margin-top: 14px;
+  }
+  .score-caption strong { color: var(--biolum); font-weight: 400; }
+
+  /* ── Founders / Character select ─────────────────────────────────── */
+  .founders {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .founder {
+    background: var(--abyss);
+    border: 3px solid var(--shallow);
+    box-shadow: 6px 6px 0 var(--shadow-2);
+    padding: 22px 20px;
+    position: relative;
+    transition: border-color 0.05s linear, transform 0.05s linear;
+  }
+  .founder:hover {
+    border-color: var(--biolum);
+    transform: translate(-2px, -2px);
+  }
+  .founder-portrait {
+    width: 56px;
+    height: 56px;
+    background: var(--abyss-deep);
+    border: 2px solid var(--biolum);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-size: 18px;
+    color: var(--biolum);
+  }
+  .founder-name {
+    font-family: var(--display);
+    font-size: 12px;
+    color: var(--white);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .founder-role {
+    font-family: var(--display);
+    font-size: 8px;
+    color: var(--biolum);
+    margin-bottom: 14px;
+    letter-spacing: 0.08em;
+  }
+  .founder-bio {
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--sand);
+  }
+  .founder-bio em { color: var(--white); font-style: normal; text-decoration: underline; text-decoration-color: var(--biolum); }
+
+  /* ── Why now ─────────────────────────────────────────────────────── */
+  .why-now-line {
+    font-family: var(--display);
+    font-size: clamp(14px, 2.6vw, 24px);
+    line-height: 1.5;
+    color: var(--white);
+    margin-bottom: 28px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .why-now-line .delivery {
+    color: var(--biolum);
+    background: var(--abyss);
+    border: 2px solid var(--biolum);
+    padding: 4px 8px;
+    margin: 0 4px;
+    box-shadow: 3px 3px 0 var(--shadow-2);
+    display: inline-block;
+  }
+  .heart {
+    display: inline-block;
+    color: var(--blood);
+    animation: heartbeat steps(2) 1.1s infinite;
+    margin: 0 4px;
+  }
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.25); }
+  }
+
+  /* ── Signoff ─────────────────────────────────────────────────────── */
+  .signoff {
+    text-align: center;
+    padding-top: 100px;
+    padding-bottom: 140px;
+  }
+  .signoff-tag {
+    font-family: var(--display);
+    font-size: clamp(22px, 6.5vw, 80px);
+    line-height: 1.4;
+    color: var(--white);
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    text-shadow: 5px 5px 0 var(--abyss-deep);
+  }
+  .signoff-tag .stop {
+    color: var(--biolum);
+    text-shadow: 5px 5px 0 var(--abyss-deep), 0 0 18px rgba(94,244,208,0.5);
+  }
+  .signoff-coin {
+    font-family: var(--display);
+    font-size: 10px;
+    color: var(--sand);
+    margin-top: 56px;
+    letter-spacing: 0.16em;
+  }
+  .signoff-coin .blink { animation: blink steps(2) 0.7s infinite; color: var(--biolum); }
+  .signoff-meta {
+    font-family: var(--display);
+    font-size: 9px;
+    color: rgba(244,232,193,0.5);
+    margin-top: 24px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    letter-spacing: 0.08em;
+  }
+  .signoff-meta a { color: var(--sand); text-decoration: none; }
+  .signoff-meta a:hover { color: var(--biolum); }
+
+  /* ── Stage banner sweep ──────────────────────────────────────────── */
+  .stage-banner {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 70;
+    pointer-events: none;
+    text-align: center;
+    opacity: 0;
+  }
+  .stage-banner-inner {
+    display: inline-block;
+    background: var(--abyss);
+    border: 3px solid var(--biolum);
+    box-shadow: 6px 6px 0 var(--shadow-2);
+    padding: 14px 32px;
+    font-family: var(--display);
+    font-size: 14px;
+    color: var(--biolum);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  /* ── Pixel sparks from button clicks ─────────────────────────────── */
+  .spark {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    background: var(--biolum);
+    pointer-events: none;
+    z-index: 80;
+    image-rendering: pixelated;
+  }
+
+  /* ── FOUC-safe hero pending hide ─────────────────────────────────── */
+  .hero-anim-pending .hero-h1,
+  .hero-anim-pending .hero-sub,
+  .hero-anim-pending .hero-chips,
+  .hero-anim-pending .hero-ctas,
+  .hero-anim-pending .scroll-hint,
+  .hero-anim-pending .stage-label { opacity: 0; }
+
+  /* ── Responsive ──────────────────────────────────────────────────── */
+  @media (max-width: 880px) {
+    section { padding: 80px 18px; }
+    .biology-grid { grid-template-columns: 1fr; gap: 36px; }
+    .biology-diagram { max-width: 320px; margin: 0 auto; }
+    .biology-tag-1 { left: 8px; }
+    .biology-tag-2 { right: 8px; }
+    .stats, .founders { grid-template-columns: 1fr; }
+    nav { top: 12px; left: 12px; }
+    .hud-depth { top: 12px; right: 12px; padding: 8px 10px; }
+    .brand { font-size: 10px; padding: 8px 10px; }
+    .hero { padding-top: 30vh; }
+    .tuna-sprite { width: 120px; height: 67px; margin-left: -60px; margin-top: -33px; }
+  }
+
+  /* ── prefers-reduced-motion ──────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+    .hero-anim-pending .hero-h1,
+    .hero-anim-pending .hero-sub,
+    .hero-anim-pending .hero-chips,
+    .hero-anim-pending .hero-ctas,
+    .hero-anim-pending .scroll-hint,
+    .hero-anim-pending .stage-label { opacity: 1; }
+    .tuna-layer { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Atmospheric layers -->
+<div class="ocean-bg"   aria-hidden="true"></div>
+<div class="dither"     aria-hidden="true"></div>
+<div class="scanlines"  aria-hidden="true"></div>
+<div class="vignette"   aria-hidden="true"></div>
+<div class="bubbles"    id="bubbles" aria-hidden="true"></div>
+<div class="specks"     id="specks"  aria-hidden="true"></div>
+
+<!-- Top HUD -->
+<nav>
+  <a href="#top" class="brand"><span class="brand-star">★</span> TUNA.AI</a>
+</nav>
+<div class="hud-depth" aria-hidden="true">
+  <span class="hud-depth-label">DEPTH</span>
+  <div class="hud-depth-bar"><div class="hud-depth-fill" id="depth-fill"></div></div>
+  <span class="hud-depth-value" id="depth-value">0M</span>
+</div>
+
+<!-- Stage banner (announces section transitions) -->
+<div class="stage-banner" id="stage-banner"><span class="stage-banner-inner">STAGE 01</span></div>
+
+<!-- Cursor-following tuna sprite -->
+<div class="tuna-layer" id="tuna-layer" aria-hidden="true">
+  <div class="tuna-trail" id="tuna-trail"></div>
+  <div class="tuna-sprite" id="tuna-sprite">
+    <svg viewBox="0 0 256 136" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+      <!-- ── BODY GROUP (head + fins + dorsal + ventral) ────────────── -->
+      <!-- Dorsal fin tip (top) -->
+      <rect x="160" y="0" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="168" y="0" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="152" y="8" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="160" y="8" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="8" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=16 body -->
+      <rect x="88" y="16" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="96" y="16" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="104" y="16" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="112" y="16" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="128" y="16" width="8" height="8" fill="#040D1A"/>
+      <rect x="136" y="16" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="144" y="16" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="152" y="16" width="8" height="8" fill="#1565AA"/>
+      <rect x="160" y="16" width="8" height="8" fill="#42A5F0"/>
+      <rect x="168" y="16" width="8" height="8" fill="#1976C3"/>
+      <rect x="176" y="16" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=24 body -->
+      <rect x="88" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="96" y="24" width="8" height="8" fill="#1565AA"/>
+      <rect x="104" y="24" width="8" height="8" fill="#1976C3"/>
+      <rect x="112" y="24" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="120" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="128" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="136" y="24" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="144" y="24" width="8" height="8" fill="#1565AA"/>
+      <rect x="152" y="24" width="8" height="8" fill="#1565AA"/>
+      <rect x="160" y="24" width="8" height="8" fill="#1565AA"/>
+      <rect x="168" y="24" width="8" height="8" fill="#1565AA"/>
+      <rect x="176" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="184" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="192" y="24" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=32 body -->
+      <rect x="96" y="32" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="104" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="112" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="120" y="32" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="128" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="136" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="144" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="152" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="160" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="176" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="184" y="32" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="192" y="32" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="200" y="32" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="208" y="32" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=40 body -->
+      <rect x="80" y="40" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="88" y="40" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="96" y="40" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="104" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="112" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="120" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="128" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="136" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="144" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="152" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="160" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="168" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="176" y="40" width="8" height="8" fill="#1976C3"/>
+      <rect x="184" y="40" width="8" height="8" fill="#1565AA"/>
+      <rect x="192" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="200" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="208" y="40" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="216" y="40" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="224" y="40" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=48 body -->
+      <rect x="64" y="48" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="72" y="48" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="80" y="48" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="88" y="48" width="8" height="8" fill="#1565AA"/>
+      <rect x="96" y="48" width="8" height="8" fill="#1565AA"/>
+      <rect x="104" y="48" width="8" height="8" fill="#1565AA"/>
+      <rect x="112" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="120" y="48" width="8" height="8" fill="#42A5F0"/>
+      <rect x="128" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="136" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="144" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="152" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="160" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="168" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="176" y="48" width="8" height="8" fill="#42A5F0"/>
+      <rect x="184" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="192" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="200" y="48" width="8" height="8" fill="#1976C3"/>
+      <rect x="208" y="48" width="8" height="8" fill="#1565AA"/>
+      <rect x="216" y="48" width="8" height="8" fill="#1565AA"/>
+      <rect x="224" y="48" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="232" y="48" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=56 body -->
+      <rect x="48" y="56" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="56" y="56" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="64" y="56" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="72" y="56" width="8" height="8" fill="#1565AA"/>
+      <rect x="80" y="56" width="8" height="8" fill="#1565AA"/>
+      <rect x="88" y="56" width="8" height="8" fill="#1976C3"/>
+      <rect x="96" y="56" width="8" height="8" fill="#1976C3"/>
+      <rect x="104" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="112" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="120" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="128" y="56" width="8" height="8" fill="#1565AA"/>
+      <rect x="136" y="56" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="144" y="56" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="152" y="56" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="160" y="56" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="176" y="56" width="8" height="8" fill="#1976C3"/>
+      <rect x="184" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="192" y="56" width="8" height="8" fill="#1565AA"/>
+      <rect x="200" y="56" width="8" height="8" fill="#42A5F0"/>
+      <rect x="208" y="56" width="8" height="8" fill="#1976C3"/>
+      <rect x="216" y="56" width="8" height="8" fill="#0D3B6E"/>
+      <rect id="tuna-eye" x="224" y="56" width="8" height="8" fill="#B4D8EB"/>
+      <rect x="232" y="56" width="8" height="8" fill="#1565AA"/>
+      <rect x="240" y="56" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=64 body -->
+      <rect x="48" y="64" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="56" y="64" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="64" y="64" width="8" height="8" fill="#1565AA"/>
+      <rect x="72" y="64" width="8" height="8" fill="#1976C3"/>
+      <rect x="80" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="88" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="96" y="64" width="8" height="8" fill="#1976C3"/>
+      <rect x="104" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="112" y="64" width="8" height="8" fill="#1976C3"/>
+      <rect x="120" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="128" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="136" y="64" width="8" height="8" fill="#1565AA"/>
+      <rect x="144" y="64" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="152" y="64" width="8" height="8" fill="#1565AA"/>
+      <rect x="160" y="64" width="8" height="8" fill="#1565AA"/>
+      <rect x="168" y="64" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="176" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="184" y="64" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="192" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="200" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="208" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="216" y="64" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="224" y="64" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="232" y="64" width="8" height="8" fill="#42A5F0"/>
+      <rect x="240" y="64" width="8" height="8" fill="#1565AA"/>
+      <rect x="248" y="64" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=72 body -->
+      <rect x="48" y="72" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="56" y="72" width="8" height="8" fill="#1565AA"/>
+      <rect x="64" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="72" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="80" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="88" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="96" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="104" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="112" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="120" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="128" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="136" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="144" y="72" width="8" height="8" fill="#1565AA"/>
+      <rect x="152" y="72" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="160" y="72" width="8" height="8" fill="#1565AA"/>
+      <rect x="168" y="72" width="8" height="8" fill="#1976C3"/>
+      <rect x="176" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="184" y="72" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="192" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="200" y="72" width="8" height="8" fill="#1976C3"/>
+      <rect x="208" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="216" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="224" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="232" y="72" width="8" height="8" fill="#42A5F0"/>
+      <rect x="240" y="72" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="248" y="72" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=80 body -->
+      <rect x="56" y="80" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="64" y="80" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="72" y="80" width="8" height="8" fill="#1565AA"/>
+      <rect x="80" y="80" width="8" height="8" fill="#1565AA"/>
+      <rect x="88" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="96" y="80" width="8" height="8" fill="#1976C3"/>
+      <rect x="104" y="80" width="8" height="8" fill="#1976C3"/>
+      <rect x="112" y="80" width="8" height="8" fill="#1976C3"/>
+      <rect x="120" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="128" y="80" width="8" height="8" fill="#1976C3"/>
+      <rect x="136" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="144" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="152" y="80" width="8" height="8" fill="#1565AA"/>
+      <rect x="160" y="80" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="176" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="184" y="80" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="192" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="200" y="80" width="8" height="8" fill="#1976C3"/>
+      <rect x="208" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="216" y="80" width="8" height="8" fill="#42A5F0"/>
+      <rect x="224" y="80" width="8" height="8" fill="#1565AA"/>
+      <rect x="232" y="80" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="240" y="80" width="8" height="8" fill="#1565AA"/>
+      <rect x="248" y="80" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=88 body -->
+      <rect x="72" y="88" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="80" y="88" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="88" y="88" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="96" y="88" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="104" y="88" width="8" height="8" fill="#1565AA"/>
+      <rect x="112" y="88" width="8" height="8" fill="#1976C3"/>
+      <rect x="120" y="88" width="8" height="8" fill="#1976C3"/>
+      <rect x="128" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="136" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="144" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="152" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="160" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="168" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="176" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="184" y="88" width="8" height="8" fill="#1565AA"/>
+      <rect x="192" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="200" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="208" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="216" y="88" width="8" height="8" fill="#42A5F0"/>
+      <rect x="224" y="88" width="8" height="8" fill="#1565AA"/>
+      <rect x="232" y="88" width="8" height="8" fill="#1565AA"/>
+      <rect x="240" y="88" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=96 body -->
+      <rect x="80" y="96" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="88" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="96" y="96" width="8" height="8" fill="#1565AA"/>
+      <rect x="104" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="112" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="120" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="128" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="136" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="144" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="152" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="160" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="168" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="176" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="184" y="96" width="8" height="8" fill="#1976C3"/>
+      <rect x="192" y="96" width="8" height="8" fill="#1565AA"/>
+      <rect x="200" y="96" width="8" height="8" fill="#1565AA"/>
+      <rect x="208" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="216" y="96" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="224" y="96" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="232" y="96" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=104 body -->
+      <rect x="72" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="80" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="88" y="104" width="8" height="8" fill="#1565AA"/>
+      <rect x="96" y="104" width="8" height="8" fill="#1565AA"/>
+      <rect x="104" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="112" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="120" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="128" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="136" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="144" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="152" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="160" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="104" width="8" height="8" fill="#1565AA"/>
+      <rect x="176" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="184" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="192" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="200" y="104" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="208" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="216" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="224" y="104" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=112 body / ventral fin -->
+      <rect x="72" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="80" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="88" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="96" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="104" y="112" width="8" height="8" fill="#040D1A"/>
+      <rect x="128" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="136" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="144" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="152" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="160" y="112" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="168" y="112" width="8" height="8" fill="#42A5F0"/>
+      <rect x="176" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="184" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="192" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="200" y="112" width="8" height="8" fill="#0A1E3D"/>
+      <!-- y=120 ventral fin -->
+      <rect x="152" y="120" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="160" y="120" width="8" height="8" fill="#1565AA"/>
+      <rect x="168" y="120" width="8" height="8" fill="#0D3B6E"/>
+      <rect x="176" y="120" width="8" height="8" fill="#0D3B6E"/>
+      <!-- y=128 ventral fin tip -->
+      <rect x="152" y="128" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="160" y="128" width="8" height="8" fill="#0A1E3D"/>
+      <rect x="168" y="128" width="8" height="8" fill="#0A1E3D"/>
+
+      <!-- ── TAIL GROUP (48 rects, x ≤ 40, wagged via CSS) ─────────── -->
+      <g class="tail-group">
+        <rect x="0"  y="16"  width="8" height="8" fill="#040D1A"/>
+        <rect x="8"  y="16"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="0"  y="24"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="24"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="24"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="0"  y="32"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="32"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="16" y="32"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="24" y="32"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="40"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="40"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="24" y="40"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="40"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="48"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="48"  width="8" height="8" fill="#1565AA"/>
+        <rect x="32" y="48"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="40" y="48"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="56"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="56"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="56"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="40" y="56"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="64"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="64"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="64"  width="8" height="8" fill="#1976C3"/>
+        <rect x="40" y="64"  width="8" height="8" fill="#1565AA"/>
+        <rect x="16" y="72"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="72"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="72"  width="8" height="8" fill="#1976C3"/>
+        <rect x="40" y="72"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="16" y="80"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="80"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="80"  width="8" height="8" fill="#1565AA"/>
+        <rect x="40" y="80"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="88"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="24" y="88"  width="8" height="8" fill="#1565AA"/>
+        <rect x="32" y="88"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="40" y="88"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="96"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="96"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="24" y="96"  width="8" height="8" fill="#0D3B6E"/>
+        <rect x="32" y="96"  width="8" height="8" fill="#0A1E3D"/>
+        <rect x="0"  y="104" width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="104" width="8" height="8" fill="#0D3B6E"/>
+        <rect x="16" y="104" width="8" height="8" fill="#0D3B6E"/>
+        <rect x="24" y="104" width="8" height="8" fill="#0A1E3D"/>
+        <rect x="0"  y="112" width="8" height="8" fill="#0A1E3D"/>
+        <rect x="8"  y="112" width="8" height="8" fill="#0A1E3D"/>
+        <rect x="16" y="112" width="8" height="8" fill="#0A1E3D"/>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="stage-label">★ STAGE 00 — <span class="pulse">INSERT COIN</span></div>
+    <h1 class="hero-h1">
+      <span class="line line-1" data-typetext="MOST AI WAITS."></span>
+      <span class="line line-2" data-typetext="OURS SHIPS."></span><span class="blink">_</span>
+    </h1>
+    <p class="hero-sub">
+      Enterprises are paying <span class="hl">millions</span> for AI that answers questions.
+      We build agents that deliver software.
+    </p>
+    <div class="hero-chips">
+      <span class="chip">SHIP IN DAYS</span>
+      <span class="chip">BRIEF → BUILD</span>
+      <span class="chip">OUTCOMES, NOT DECKS</span>
+    </div>
+    <div class="hero-ctas">
+      <a class="btn" href="#contact">PRESS START</a>
+      <a class="btn btn-ghost" href="#what-we-do">HOW IT WORKS</a>
+    </div>
+    <div class="scroll-hint">
+      <span>DESCEND</span>
+      <span class="arrow">▼ ▼ ▼</span>
+    </div>
+  </section>
+
+  <!-- BIOLOGY -->
+  <section class="biology" id="biology" data-stage="01" data-stage-name="BIOLOGY">
+    <div class="biology-grid">
+      <div class="reveal">
+        <div class="stage-label">STAGE 01 — <span class="pulse">BIOLOGY</span></div>
+        <h2 class="section-title">TUNA NEVER STOP <span class="hl">SWIMMING.</span></h2>
+        <p class="section-body">They have no swim bladder. They breathe by ram ventilation — water must pass through their gills, constantly, or they suffocate.</p>
+        <p class="section-body">Movement isn't discipline. <strong>It's how they exist.</strong></p>
+      </div>
+      <div class="biology-diagram reveal" aria-hidden="true">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+          <!-- Concentric square rings (cross-section) -->
+          <rect x="20" y="20" width="40" height="40" fill="none" stroke="#5ef4d0" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="28" y="28" width="24" height="24" fill="none" stroke="#5ef4d0" stroke-width="1"/>
+          <rect x="36" y="36" width="8"  height="8"  fill="#5ef4d0" opacity="0.4"/>
+          <!-- Flow arrows in -->
+          <g class="arrow-in">
+            <rect x="6"  y="35" width="10" height="2" fill="#5ef4d0"/>
+            <rect x="14" y="33" width="2" height="2" fill="#5ef4d0"/>
+            <rect x="16" y="35" width="2" height="2" fill="#5ef4d0"/>
+            <rect x="14" y="37" width="2" height="2" fill="#5ef4d0"/>
+            <rect x="6"  y="43" width="10" height="2" fill="#5ef4d0"/>
+            <rect x="14" y="41" width="2" height="2" fill="#5ef4d0"/>
+            <rect x="16" y="43" width="2" height="2" fill="#5ef4d0"/>
+            <rect x="14" y="45" width="2" height="2" fill="#5ef4d0"/>
+          </g>
+          <!-- Flow arrows out -->
+          <g class="arrow-out">
+            <rect x="64" y="35" width="10" height="2" fill="#00b0ff"/>
+            <rect x="62" y="33" width="2" height="2" fill="#00b0ff"/>
+            <rect x="62" y="37" width="2" height="2" fill="#00b0ff"/>
+            <rect x="60" y="35" width="2" height="2" fill="#00b0ff"/>
+            <rect x="64" y="43" width="10" height="2" fill="#00b0ff"/>
+            <rect x="62" y="41" width="2" height="2" fill="#00b0ff"/>
+            <rect x="62" y="45" width="2" height="2" fill="#00b0ff"/>
+            <rect x="60" y="43" width="2" height="2" fill="#00b0ff"/>
+          </g>
+        </svg>
+        <span class="biology-tag biology-tag-1">▶ GILLS</span>
+        <span class="biology-tag biology-tag-2">RAM FLOW ▶</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MANIFESTO -->
+  <section class="manifesto" data-stage="02" data-stage-name="DIRECTIVE">
+    <div>
+      <h2 class="manifesto-text">
+        KEEP MOVING.<br><span class="stop" id="manifesto-glitch">OR STOP EXISTING.</span>
+      </h2>
+      <p class="manifesto-thesis">// AGENTS WORK THE SAME WAY //</p>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="problem" id="problem" data-stage="03" data-stage-name="THE PROBLEM">
+    <div class="narrow reveal">
+      <div class="stage-label">STAGE 03 — <span class="pulse">THE PROBLEM</span></div>
+      <div class="quote-block">
+        <span class="quote-mark">"</span>
+        <p class="quote-text">Enterprises are paying six and seven figures for AI that waits to be prompted, answers in isolation, and forgets the moment the conversation ends.</p>
+      </div>
+      <p class="punchline">THAT'S NOT AN AGENT. THAT'S A CHATBOT IN A SUIT.</p>
+      <p class="section-body">Meanwhile, the work that actually matters — designing systems, writing production code, building internal tools, automating workflows — still falls back on human teams, long timelines, and consulting bills that don't match the output.</p>
+    </div>
+  </section>
+
+  <!-- WHAT WE DO -->
+  <section class="what-we-do" id="what-we-do" data-stage="04" data-stage-name="ABILITIES">
+    <div class="narrow reveal">
+      <div class="stage-label">STAGE 04 — <span class="pulse">ABILITIES</span></div>
+      <h2 class="section-title">WE BUILD AGENTS THAT <span class="hl">DESIGN AND SHIP</span> SOFTWARE.</h2>
+      <div class="stats">
+        <article class="stat-card">
+          <span class="corner-tl"></span><span class="corner-bl"></span>
+          <div class="stat-num">STAT.01</div>
+          <div class="stat-title">SHIP IN DAYS, NOT QUARTERS</div>
+          <p class="stat-sub">Velocity that matches the pace of the problem — not the pace of procurement.</p>
+        </article>
+        <article class="stat-card">
+          <span class="corner-tl"></span><span class="corner-bl"></span>
+          <div class="stat-num">STAT.02</div>
+          <div class="stat-title">FROM BRIEF TO BUILD</div>
+          <p class="stat-sub">Your problem in. Working software out. No translation layer required.</p>
+        </article>
+        <article class="stat-card">
+          <span class="corner-tl"></span><span class="corner-bl"></span>
+          <div class="stat-num">STAT.03</div>
+          <div class="stat-title">OUTCOMES, NOT DECKS</div>
+          <p class="stat-sub">Production code, working features, real metrics. Not strategy decks.</p>
+        </article>
+      </div>
+      <p class="section-body" style="border-left:4px solid var(--biolum); padding-left:18px; color: var(--white);">
+        Give us a problem. We hand you the working thing — not a recommendation, not a deck, not a prototype that dies in staging.
+      </p>
+    </div>
+  </section>
+
+  <!-- WHY WIN + COUNTER -->
+  <section class="why-win" id="why-win" data-stage="05" data-stage-name="WHY WE WIN">
+    <div class="narrow reveal">
+      <div class="stage-label">STAGE 05 — <span class="pulse">WHY WE WIN</span></div>
+      <p class="section-body">Most AI products are built like goldfish: <strong>they wait, they respond, they idle.</strong></p>
+      <p class="section-body">We built ours like tuna. <em>Always moving. Always sensing. Always closing the gap between problem and solution.</em></p>
+    </div>
+
+    <div class="scoreboard reveal" aria-label="Distance counter">
+      <div class="score-label">★ DISTANCE / YEAR ★</div>
+      <div class="score-row" id="score-row">
+        <div class="score-digit">0</div>
+        <div class="score-digit">0</div>
+        <div class="score-digit">0</div>
+        <div class="score-digit">0</div>
+        <div class="score-digit">0</div>
+      </div>
+      <div style="font-family:var(--display); font-size:9px; color:var(--sand); letter-spacing:0.16em;">KILOMETERS</div>
+      <p class="score-caption">
+        A tuna travels <strong>10,000+ km a year</strong>. Warm-blooded in cold water. Ocean's most efficient predator — not because it's the biggest, but because it never stops.
+      </p>
+    </div>
+
+    <p class="section-body narrow reveal" style="text-align:center; margin-top: 56px; font-size: 22px;">
+      That's the kind of agent enterprises need. <strong>That's what we ship.</strong>
+    </p>
+  </section>
+
+  <!-- FOUNDERS -->
+  <section class="founders-section" id="founders" data-stage="06" data-stage-name="CHARACTER SELECT">
+    <div class="narrow reveal">
+      <div class="stage-label">STAGE 06 — <span class="pulse">CHARACTER SELECT</span></div>
+      <h2 class="section-title">WHY WE BUILT <span class="hl">TUNA.AI</span></h2>
+      <p class="section-body">We've spent the last few years on the inside of enterprise AI — and we kept seeing the same thing. Companies were spending millions on AI initiatives that ended in slide decks. Pilots that never reached production. Prototypes that worked in demos and broke in staging. <strong>The technology was ready. The delivery model wasn't.</strong> So we built a different one.</p>
+    </div>
+    <div class="founders">
+      <article class="founder reveal">
+        <div class="founder-portrait">RZ</div>
+        <div class="founder-name">RAY ZHAO</div>
+        <div class="founder-role">★ FULL-STACK ENGINEER</div>
+        <p class="founder-bio">Ray has spent his career shipping software that actually runs in production. He's built systems used by millions of users and worked with AI in the trenches long before it was a category. If TUNA.AI ships in days instead of quarters, it's because Ray refuses to accept that software has to be slow.</p>
+      </article>
+      <article class="founder reveal">
+        <div class="founder-portrait">RH</div>
+        <div class="founder-name">RICHARD HONG</div>
+        <div class="founder-role">★ ARCHITECT</div>
+        <p class="founder-bio">Richard sees systems before he sees code. He looks at a tangled enterprise stack and finds the line through it — what to build, what to wrap, what to throw away. He always asks <em>what's the smallest thing that solves the real problem?</em></p>
+      </article>
+      <article class="founder reveal">
+        <div class="founder-portrait">WW</div>
+        <div class="founder-name">WELLNESS WEI</div>
+        <div class="founder-role">★ AI ADVISOR</div>
+        <p class="founder-bio">Wellness has sat across the table from dozens of enterprise leaders asking <em>how do we actually use this?</em> She's seen which AI projects deliver ROI and which become expensive science experiments. She makes sure TUNA.AI is on the right side of that line — every time.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- WHY NOW -->
+  <section class="why-now" id="why-now" data-stage="07" data-stage-name="WHY NOW">
+    <div class="narrow reveal">
+      <div class="stage-label">STAGE 07 — <span class="pulse">WHY NOW</span></div>
+      <p class="why-now-line">
+        FOUNDATION MODELS — GOOD ENOUGH. TOOLING — CAUGHT UP. THE BOTTLENECK ISN'T INTELLIGENCE.
+        IT'S <span class="delivery">DELIVERY</span><span class="heart">♥</span>.
+      </p>
+      <p class="section-body">The next decade of enterprise software won't be won by whoever has the best model. It'll be won by <strong>whoever ships first</strong>.</p>
+      <p class="section-body" style="font-family: var(--display); font-size: 13px; color: var(--white); margin-top: 28px; line-height: 1.6;">
+        ▶ THAT'S THE COMPANY WE'RE BUILDING.
+      </p>
+    </div>
+  </section>
+
+  <!-- SIGNOFF -->
+  <section class="signoff" id="contact" data-stage="08" data-stage-name="GAME OVER">
+    <div class="reveal">
+      <h2 class="signoff-tag">
+        KEEP MOVING.<br><span class="stop">OR STOP EXISTING.</span>
+      </h2>
+      <a class="btn" href="mailto:hello@tuna.ai">PRESS START</a>
+      <div class="signoff-coin">★ <span class="blink">INSERT COIN</span> TO CONTINUE ★</div>
+      <div class="signoff-meta">
+        <a href="mailto:hello@tuna.ai">HELLO@TUNA.AI</a>
+        <span>© TUNA.AI 2026</span>
+        <a href="#top">⬆ BACK TO SURFACE</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  function spawnBubbles(host, count) {
+    var f = document.createDocumentFragment();
+    for (var i = 0; i < count; i++) {
+      var b = document.createElement('span');
+      b.className = 'pix-bubble' + (Math.random() < 0.5 ? ' tiny' : '');
+      b.style.left = (Math.random() * 100) + '%';
+      var dur = 12 + Math.random() * 16;
+      b.style.animationDuration = dur + 's';
+      b.style.animationDelay    = (-Math.random() * dur) + 's';
+      f.appendChild(b);
+    }
+    host.appendChild(f);
+  }
+
+  function spawnSpecks(host, count) {
+    var f = document.createDocumentFragment();
+    for (var i = 0; i < count; i++) {
+      var s = document.createElement('span');
+      s.className = 'speck';
+      s.style.left = (Math.random() * 100) + '%';
+      s.style.top  = (Math.random() * 100) + '%';
+      var dur = 1.5 + Math.random() * 3;
+      s.style.animationDuration = dur + 's';
+      s.style.animationDelay    = (-Math.random() * dur) + 's';
+      f.appendChild(s);
+    }
+    host.appendChild(f);
+  }
+
+  ready(function () {
+    spawnBubbles(document.getElementById('bubbles'), 36);
+    spawnSpecks(document.getElementById('specks'), 50);
+
+    var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ── Type-in hero headline (works without GSAP) ───────────────────
+    var typeTargets = document.querySelectorAll('[data-typetext]');
+    typeTargets.forEach(function (el) {
+      var full = el.dataset.typetext;
+      el.dataset.full = full;
+      el.textContent = rm ? full : '';
+    });
+
+    if (rm || typeof gsap === 'undefined') {
+      document.documentElement.classList.remove('hero-anim-pending');
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('visible'); });
+      typeTargets.forEach(function (el) { el.textContent = el.dataset.full; });
+      return;
+    }
+
+    if (window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+    document.documentElement.classList.remove('hero-anim-pending');
+
+    // ── Hero entrance (type-in + chips/buttons) ──────────────────────
+    var heroTL = gsap.timeline({ defaults: { ease: 'steps(8)', duration: 0.6 } });
+    heroTL.from('.hero .stage-label', { opacity: 0, y: 8, duration: 0.4 });
+
+    typeTargets.forEach(function (el, idx) {
+      var text = el.dataset.full;
+      var obj = { i: 0 };
+      heroTL.to(obj, {
+        i: text.length,
+        duration: text.length * 0.06,
+        ease: 'none',
+        snap: { i: 1 },
+        onUpdate: function () { el.textContent = text.slice(0, Math.floor(obj.i)); },
+        onComplete: function () { el.textContent = text; }
+      }, idx === 0 ? '>-0.1' : '+=0.1');
+    });
+
+    heroTL.from('.hero-sub',  { opacity: 0, y: 10, duration: 0.4 }, '+=0.1')
+          .from('.hero-chips .chip', { opacity: 0, x: -10, stagger: 0.08, duration: 0.3 }, '+=0.05')
+          .from('.hero-ctas .btn',   { opacity: 0, y: 10, stagger: 0.1,  duration: 0.4 }, '+=0.05')
+          .from('.scroll-hint',     { opacity: 0, duration: 0.4 }, '+=0.05');
+
+    // ── Section reveals via ScrollTrigger ────────────────────────────
+    if (window.ScrollTrigger) {
+      gsap.utils.toArray('.reveal').forEach(function (el) {
+        var kids = el.children.length > 1 ? Array.from(el.children) : [el];
+        gsap.from(kids, {
+          opacity: 0,
+          y: 20,
+          stagger: 0.08,
+          duration: 0.5,
+          ease: 'steps(6)',
+          scrollTrigger: { trigger: el, start: 'top 80%', toggleActions: 'play none none none' }
+        });
+      });
+
+      // ── Stage banner sweep ─────────────────────────────────────────
+      var banner = document.getElementById('stage-banner');
+      var bannerInner = banner.querySelector('.stage-banner-inner');
+      var lastBanner = null;
+      gsap.utils.toArray('section[data-stage]').forEach(function (sec) {
+        ScrollTrigger.create({
+          trigger: sec,
+          start: 'top 60%',
+          onEnter: function () { showBanner(sec); },
+          onEnterBack: function () { showBanner(sec); }
+        });
+      });
+      function showBanner(sec) {
+        var key = sec.dataset.stage + sec.dataset.stageName;
+        if (key === lastBanner) return;
+        lastBanner = key;
+        bannerInner.textContent = '▶ STAGE ' + sec.dataset.stage + ' — ' + sec.dataset.stageName;
+        gsap.killTweensOf(banner);
+        gsap.fromTo(banner,
+          { opacity: 0, x: -40 },
+          {
+            opacity: 1, x: 0, duration: 0.3, ease: 'steps(6)',
+            onComplete: function () {
+              gsap.to(banner, { opacity: 0, x: 40, duration: 0.3, ease: 'steps(6)', delay: 1.2 });
+            }
+          });
+      }
+
+      // ── Depth meter (HUD) ──────────────────────────────────────────
+      var depthFill = document.getElementById('depth-fill');
+      var depthValue = document.getElementById('depth-value');
+      var MAX_DEPTH_M = 4000;
+      ScrollTrigger.create({
+        trigger: 'body',
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: function (self) {
+          var p = self.progress;
+          depthFill.style.width = (p * 100).toFixed(1) + '%';
+          depthValue.textContent = Math.round(p * MAX_DEPTH_M) + 'M';
+        }
+      });
+
+      // ── Manifesto glitch (continuous random char swap) ─────────────
+      var manifestoEl = document.getElementById('manifesto-glitch');
+      if (manifestoEl) {
+        var original = manifestoEl.textContent;
+        var glitchChars = '!@#$%&*<>[]{}=+/?\\|';
+        ScrollTrigger.create({
+          trigger: '.manifesto',
+          start: 'top center',
+          end: 'bottom center',
+          onEnter: startGlitch,
+          onEnterBack: startGlitch,
+          onLeave: stopGlitch,
+          onLeaveBack: stopGlitch
+        });
+        var glitchInterval = null;
+        function startGlitch() {
+          if (glitchInterval) return;
+          glitchInterval = setInterval(function () {
+            var arr = original.split('');
+            // Flip 1-3 random chars to glitch glyphs, then restore on next tick
+            var flips = 1 + Math.floor(Math.random() * 3);
+            for (var k = 0; k < flips; k++) {
+              var idx = Math.floor(Math.random() * arr.length);
+              if (arr[idx] !== ' ') arr[idx] = glitchChars[Math.floor(Math.random() * glitchChars.length)];
+            }
+            manifestoEl.textContent = arr.join('');
+            setTimeout(function () { manifestoEl.textContent = original; }, 80);
+          }, 1100);
+        }
+        function stopGlitch() {
+          if (glitchInterval) { clearInterval(glitchInterval); glitchInterval = null; }
+          manifestoEl.textContent = original;
+        }
+      }
+
+      // ── Scoreboard 5-digit count-up ────────────────────────────────
+      var digitEls = document.querySelectorAll('#score-row .score-digit');
+      var TARGET = 10000;
+      var counterObj = { v: 0 };
+      gsap.to(counterObj, {
+        v: TARGET,
+        duration: 3.0,
+        ease: 'power1.out',
+        scrollTrigger: { trigger: '#score-row', start: 'top 80%' },
+        onUpdate: function () {
+          var n = Math.floor(counterObj.v);
+          var s = String(n).padStart(5, '0');
+          digitEls.forEach(function (d, i) {
+            if (d.textContent !== s[i]) {
+              d.textContent = s[i];
+              // Pixel-flip animation: brief scale snap
+              gsap.fromTo(d, { scaleY: 0.2 }, { scaleY: 1, duration: 0.15, ease: 'steps(3)' });
+            }
+          });
+        }
+      });
+    }
+
+    // ── Click sparks ───────────────────────────────────────────────
+    document.querySelectorAll('.btn').forEach(function (btn) {
+      btn.addEventListener('pointerdown', function (e) {
+        var rect = btn.getBoundingClientRect();
+        burstSparks(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      });
+    });
+    function burstSparks(cx, cy) {
+      var dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+      dirs.forEach(function (d, i) {
+        var s = document.createElement('span');
+        s.className = 'spark';
+        s.style.left = cx + 'px';
+        s.style.top  = cy + 'px';
+        document.body.appendChild(s);
+        var dist = 40 + Math.random() * 30;
+        gsap.to(s, {
+          x: d[0] * dist,
+          y: d[1] * dist,
+          opacity: 0,
+          duration: 0.5,
+          ease: 'steps(5)',
+          onComplete: function () { s.remove(); }
+        });
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // CURSOR-FOLLOWING PIXEL TUNA
+    // ─────────────────────────────────────────────────────────────────
+    (function initTunaFollow() {
+      var tunaLayer = document.getElementById('tuna-layer');
+      var sprite    = document.getElementById('tuna-sprite');
+      var trailHost = document.getElementById('tuna-trail');
+      if (!sprite) return;
+
+      var TRAIL_COUNT  = 8;
+      var TRAIL_STRIDE = 3;
+      var FOLLOW_LERP  = 0.10;
+      var ROT_LERP     = 0.22;
+      var IDLE_AFTER   = 1.2;
+
+      // Build trail
+      var dots = [], dotSetters = [], dotOpacity = [];
+      for (var i = 0; i < TRAIL_COUNT; i++) {
+        var d = document.createElement('span');
+        d.className = 'trail-pix';
+        var sz = 8 - i * 0.6;
+        d.style.width = sz + 'px';
+        d.style.height = sz + 'px';
+        d.style.marginLeft = (-sz / 2) + 'px';
+        d.style.marginTop  = (-sz / 2) + 'px';
+        trailHost.appendChild(d);
+        dots.push(d);
+        dotSetters.push({
+          x: gsap.quickSetter(d, 'x', 'px'),
+          y: gsap.quickSetter(d, 'y', 'px')
+        });
+        dotOpacity.push(0.6 * (1 - i / TRAIL_COUNT));
+      }
+
+      var setX  = gsap.quickSetter(sprite, 'x', 'px');
+      var setY  = gsap.quickSetter(sprite, 'y', 'px');
+      var setRot = gsap.quickSetter(sprite, 'rotation', 'deg');
+      var setSX = gsap.quickSetter(sprite, 'scaleX');
+      var setSY = gsap.quickSetter(sprite, 'scaleY');
+
+      var target = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 };
+      var pos    = { x: target.x, y: target.y };
+      var prev   = { x: pos.x,    y: pos.y };
+      var history = [];
+      var currentRot = 0;
+      var facingRight = true;
+      var lastMove = -Infinity;
+      var visible = false;
+      var idleAngle = Math.random() * Math.PI * 2;
+      var blinkTimer = 0;
+      var nextBlinkAt = 3 + Math.random() * 3;
+      var idleBubbleTimer = 0;
+      var lastTickTime = performance.now();
+      var lastWagDur = 0;
+      var EYE_OPEN  = '#B4D8EB';
+      var EYE_CLOSED = '#0A1E3D';
+      var eyeEl = document.getElementById('tuna-eye');
+
+      gsap.set(sprite, { scaleX: 1, scaleY: 1 });
+
+      function show() {
+        if (visible) return;
+        visible = true;
+        gsap.to(sprite, { opacity: 1, duration: 0.3, ease: 'steps(4)' });
+        dots.forEach(function (el, j) {
+          gsap.to(el, { opacity: dotOpacity[j], duration: 0.3, ease: 'steps(4)' });
+        });
+      }
+      function hide() {
+        if (!visible) return;
+        visible = false;
+        gsap.to(sprite, { opacity: 0, duration: 0.3 });
+        gsap.to(dots,   { opacity: 0, duration: 0.3 });
+      }
+
+      function onMove(x, y) {
+        target.x = x;
+        target.y = y;
+        lastMove = performance.now();
+        if (!visible) show();
+      }
+
+      window.addEventListener('mousemove', function (e) { onMove(e.clientX, e.clientY); });
+      window.addEventListener('touchmove', function (e) {
+        if (e.touches && e.touches.length) onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      document.addEventListener('mouseleave', hide);
+      window.addEventListener('blur', hide);
+
+      function tick() {
+        requestAnimationFrame(tick);
+        var now = performance.now();
+        var dt  = (now - lastTickTime) / 1000;
+        lastTickTime = now;
+        var idleTime = (now - lastMove) / 1000;
+
+        var aimX = target.x, aimY = target.y;
+        if (visible && idleTime > IDLE_AFTER) {
+          idleAngle += 0.012;
+          aimX = target.x + Math.cos(idleAngle) * 60;
+          aimY = target.y + Math.sin(idleAngle) * 30;
+        }
+
+        pos.x += (aimX - pos.x) * FOLLOW_LERP;
+        pos.y += (aimY - pos.y) * FOLLOW_LERP;
+
+        var vx = pos.x - prev.x;
+        var vy = pos.y - prev.y;
+        var speed = Math.sqrt(vx*vx + vy*vy);
+
+        if (speed > 0.5) {
+          var newFacing = vx >= 0;
+          facingRight = newFacing;
+          var raw = Math.atan2(vy, vx) * 180 / Math.PI;
+          var bodyAngle = facingRight ? raw : (raw - 180);
+          if (bodyAngle >  26) bodyAngle =  26;
+          if (bodyAngle < -26) bodyAngle = -26;
+          currentRot += (bodyAngle - currentRot) * ROT_LERP;
+        } else {
+          currentRot += (0 - currentRot) * 0.05;
+        }
+
+        // Pixel-art: snap rotation to 4° steps (no smooth interpolation feel)
+        var snappedRot = Math.round(currentRot / 4) * 4;
+        setRot(snappedRot);
+        setSX(facingRight ? 1 : -1);
+        setSY(1);
+        setX(pos.x);
+        setY(pos.y);
+
+        // ── Tail wag speed: drive the CSS animation duration ────────
+        // Smaller dur = faster wag. We snap to a few discrete buckets so the
+        // CSS keyframe doesn't restart on every micro velocity change.
+        var wagDur = speed > 6 ? 0.07 : (speed > 3 ? 0.11 : (speed > 0.6 ? 0.18 : 0.32));
+        if (wagDur !== lastWagDur) {
+          sprite.style.setProperty('--wag-dur', wagDur + 's');
+          lastWagDur = wagDur;
+        }
+
+        // ── Eye blink ────────────────────────────────────────────────
+        blinkTimer += dt;
+        if (eyeEl && blinkTimer >= nextBlinkAt) {
+          eyeEl.setAttribute('fill', EYE_CLOSED);
+          setTimeout(function () { eyeEl.setAttribute('fill', EYE_OPEN); }, 110);
+          blinkTimer = 0;
+          nextBlinkAt = 3 + Math.random() * 3;
+        }
+
+        // ── Idle bubble from mouth (when tuna is mostly still) ───────
+        idleBubbleTimer += dt;
+        if (visible && speed < 0.8 && idleBubbleTimer > 2.6) {
+          idleBubbleTimer = 0;
+          spawnIdleBubble(pos.x + (facingRight ? 40 : -40), pos.y - 12);
+        }
+
+        // ── Trail ────────────────────────────────────────────────────
+        history.unshift({ x: pos.x, y: pos.y });
+        var maxHist = TRAIL_COUNT * TRAIL_STRIDE + 4;
+        if (history.length > maxHist) history.length = maxHist;
+        for (var k = 0; k < TRAIL_COUNT; k++) {
+          var hi = Math.min((k + 1) * TRAIL_STRIDE, history.length - 1);
+          var hp = history[hi];
+          if (hp) { dotSetters[k].x(hp.x); dotSetters[k].y(hp.y); }
+        }
+
+        prev.x = pos.x;
+        prev.y = pos.y;
+      }
+      requestAnimationFrame(tick);
+
+      // Pixel bubble emitter (one shot)
+      function spawnIdleBubble(x, y) {
+        var b = document.createElement('span');
+        b.style.cssText =
+          'position:fixed;left:' + x + 'px;top:' + y + 'px;' +
+          'width:6px;height:6px;background:var(--biolum);' +
+          'pointer-events:none;z-index:31;image-rendering:pixelated;';
+        document.body.appendChild(b);
+        gsap.to(b, {
+          y: -60 - Math.random() * 40,
+          x: (Math.random() - 0.5) * 30,
+          opacity: 0,
+          duration: 2.4 + Math.random(),
+          ease: 'steps(8)',
+          onComplete: function () { b.remove(); }
+        });
+      }
+    })();
+
+    window.addEventListener('load', function () {
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
