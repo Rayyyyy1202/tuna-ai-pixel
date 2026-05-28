@@ -1004,9 +1004,9 @@
     position: absolute;
     top: 50%;
     left: 0;
-    width: 280px;
-    height: 150px;
-    margin-top: -75px;
+    width: 180px;
+    height: 96px;
+    margin-top: -48px;
     z-index: 7;
     pointer-events: none;
     opacity: 0;
@@ -1016,10 +1016,10 @@
        Negative-x drop-shadows fake a horizontal motion blur trail. */
     filter:
       brightness(0) invert(1)
-      drop-shadow(0 0 10px #5ef4d0)
-      drop-shadow(-12px 0 6px rgba(255,255,255,0.55))
-      drop-shadow(-28px 0 14px rgba(94,244,208,0.45))
-      drop-shadow(-48px 0 22px rgba(94,244,208,0.25));
+      drop-shadow(0 0 8px #5ef4d0)
+      drop-shadow(-10px 0 5px rgba(255,255,255,0.55))
+      drop-shadow(-22px 0 11px rgba(94,244,208,0.45))
+      drop-shadow(-38px 0 18px rgba(94,244,208,0.25));
   }
   .splash-fish svg {
     width: 100%;
@@ -1027,7 +1027,7 @@
     display: block;
   }
   @media (max-width: 640px) {
-    .splash-fish { width: 200px; height: 108px; margin-top: -54px; }
+    .splash-fish { width: 130px; height: 70px; margin-top: -35px; }
   }
   .splash-content {
     position: absolute;
@@ -1140,9 +1140,9 @@
   <!-- Jagged tear-line that draws across before the split -->
   <svg class="splash-crack" id="splash-crack" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
     <path d="M 0,52 L 60,40 L 110,58 L 180,44 L 240,56 L 300,38 L 360,54 L 430,42 L 490,56 L 560,40 L 620,52 L 690,38 L 760,54 L 820,42 L 880,56 L 940,44 L 1000,52"
-          stroke="#5ef4d0" stroke-width="2.5" fill="none"
+          stroke="#ffffff" stroke-width="2.5" fill="none"
           stroke-linejoin="miter" shape-rendering="crispEdges"
-          style="filter: drop-shadow(0 0 6px #5ef4d0) drop-shadow(0 0 12px rgba(94,244,208,0.7));"/>
+          style="filter: drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 8px rgba(255,255,255,0.85)) drop-shadow(0 0 16px rgba(94,244,208,0.35));"/>
   </svg>
   <!-- Brief surface-tension flash at the tear moment -->
   <div class="splash-flash" id="splash-flash"></div>
@@ -1936,17 +1936,22 @@
     // Fish position: start off-screen left
     master.set(fishEl, { x: -360, opacity: 0 });
 
-    // ── Fish charges left-to-right; crack draws in sync ──────────────
+    // ── Fish charges left-to-right; crack appears only behind the fish ──
     master.to(fishEl, {
       x: function () { return window.innerWidth + 240; },
       opacity: 1,
-      duration: 0.45,
+      duration: 0.50,
       ease: 'none',
       onStart: function () { gsap.set(fishEl, { opacity: 1 }); },
       onUpdate: function () {
         if (!crackPath) return;
-        // Crack draw-in follows the fish position
-        var p = this.progress();
+        // Drive crack draw by the fish's actual VIEWPORT x position.
+        // The fish has its origin at the center of the .splash-fish box
+        // (left:0 + the transform x). We treat its x as the leading edge.
+        var fishX = parseFloat(gsap.getProperty(fishEl, 'x')) || 0;
+        var vw = window.innerWidth;
+        // Clamp so the crack only exists where the fish has actually been
+        var p = Math.max(0, Math.min(1, fishX / vw));
         crackPath.setAttribute('stroke-dashoffset', String((1 - p) * 1500));
       }
     }, '>'); // start right after content fade
