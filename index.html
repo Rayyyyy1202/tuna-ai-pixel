@@ -999,6 +999,36 @@
     pointer-events: none;
     z-index: 6;
   }
+  /* The charging white tuna that does the tearing */
+  .splash-fish {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 280px;
+    height: 150px;
+    margin-top: -75px;
+    z-index: 7;
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform, opacity;
+    image-rendering: pixelated;
+    /* Pure-white silhouette + trailing biolum glow.
+       Negative-x drop-shadows fake a horizontal motion blur trail. */
+    filter:
+      brightness(0) invert(1)
+      drop-shadow(0 0 10px #5ef4d0)
+      drop-shadow(-12px 0 6px rgba(255,255,255,0.55))
+      drop-shadow(-28px 0 14px rgba(94,244,208,0.45))
+      drop-shadow(-48px 0 22px rgba(94,244,208,0.25));
+  }
+  .splash-fish svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  @media (max-width: 640px) {
+    .splash-fish { width: 200px; height: 108px; margin-top: -54px; }
+  }
   .splash-content {
     position: absolute;
     inset: 0;
@@ -1116,6 +1146,8 @@
   </svg>
   <!-- Brief surface-tension flash at the tear moment -->
   <div class="splash-flash" id="splash-flash"></div>
+  <!-- Ghost tuna that does the tearing (SVG cloned in by JS) -->
+  <div class="splash-fish" id="splash-fish" aria-hidden="true"></div>
   <!-- Boot log + brand mark (faded out before the tear) -->
   <div class="splash-content">
     <div class="splash-boot" id="splash-boot">
@@ -1793,6 +1825,41 @@
     }
   }
 
+  // ── Pixel-step screen shake on <body> ──────────────────────────────
+  // Random offsets per frame with quadratic falloff; non-blocking rAF loop.
+  function shakeScreen(intensity, duration) {
+    var target = document.body;
+    var startTime = performance.now();
+    (function frame() {
+      var elapsed = (performance.now() - startTime) / 1000;
+      if (elapsed >= duration) {
+        target.style.transform = '';
+        return;
+      }
+      var falloff = 1 - elapsed / duration;
+      falloff *= falloff; // quadratic ease-out
+      var amp = intensity * falloff;
+      var x = (Math.random() - 0.5) * amp * 2;
+      var y = (Math.random() - 0.5) * amp * 2;
+      target.style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px)';
+      requestAnimationFrame(frame);
+    })();
+  }
+
+  // Clone the brand tuna SVG into the splash-fish container as a
+  // brightness(0)+invert(1) ghost silhouette. Strips inner ids to avoid
+  // colliding with the live cursor-follow tuna (e.g. #tuna-eye).
+  function buildGhostFish() {
+    var host = document.getElementById('splash-fish');
+    if (!host || host.querySelector('svg')) return;
+    var src = document.querySelector('#tuna-sprite svg');
+    if (!src) return;
+    var clone = src.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+    host.appendChild(clone);
+  }
+
   // ── Boot → mark → dive splash sequence ──────────────────────────────
   // Calls onHeroCue ~0.1s into the dive (so hero entrance overlaps the
   // splash exit). Calls onDone after the splash is fully cleared.
@@ -1847,42 +1914,64 @@
             { opacity: 1, scale: 1, duration: 0.4, ease: 'steps(6)' }, '<')
           .to({}, { duration: 0.5 });
 
-    // ── ACT 3: tear-open transition ───────────────────────────────────
+    // ── ACT 3: ghost tuna tears the screen ───────────────────────────
     var topEl    = document.getElementById('splash-top');
     var bottomEl = document.getElementById('splash-bottom');
     var crackEl  = document.getElementById('splash-crack');
+    var fishEl   = document.getElementById('splash-fish');
     var crackPath = crackEl ? crackEl.querySelector('path') : null;
 
-    // Fade content (so the brand mark doesn't get sliced by the tear)
+    // Build the ghost fish (clone of brand tuna SVG)
+    buildGhostFish();
+
+    // Fade content (so brand mark doesn't get sliced)
     master.to('.splash-content', { opacity: 0, duration: 0.2, ease: 'steps(3)' });
 
-    // Jagged crack draws across the midline
+    // Prep crack: hidden until fish starts drawing it
     if (crackPath) {
-      // Reveal the SVG layer
       master.set(crackEl, { opacity: 1 });
-      master.to(crackPath, {
-        strokeDashoffset: 0,
-        duration: 0.22,
-        ease: 'none'
-      });
+      master.set(crackPath, { strokeDashoffset: 1500 });
     }
 
-    // Surface-tension flash blasts horizontally — pressure release
+    // Fish position: start off-screen left
+    master.set(fishEl, { x: -360, opacity: 0 });
+
+    // ── Fish charges left-to-right; crack draws in sync ──────────────
+    master.to(fishEl, {
+      x: function () { return window.innerWidth + 240; },
+      opacity: 1,
+      duration: 0.45,
+      ease: 'none',
+      onStart: function () { gsap.set(fishEl, { opacity: 1 }); },
+      onUpdate: function () {
+        if (!crackPath) return;
+        // Crack draw-in follows the fish position
+        var p = this.progress();
+        crackPath.setAttribute('stroke-dashoffset', String((1 - p) * 1500));
+      }
+    }, '>'); // start right after content fade
+
+    // ── At fish midpoint: shake, flash, and split the halves ──────────
+    // "<-0.22" = 0.22s before the fish tween ends (≈ midcharge)
+    master.call(function () { shakeScreen(7, 0.28); }, [], '<+0.20');
+
     master.fromTo(flashEl,
       { scaleX: 0, opacity: 0 },
-      { scaleX: 1.4, opacity: 1, duration: 0.14, ease: 'power2.out' }, '-=0.04')
-      .to(flashEl, { opacity: 0, duration: 0.18, ease: 'steps(3)' });
+      { scaleX: 1.5, opacity: 1, duration: 0.10, ease: 'power2.out' }, '<')
+      .to(flashEl, { opacity: 0, duration: 0.20, ease: 'steps(3)' });
 
-    // Rush bubbles erupt outward from the tear line
+    // Rush bubbles erupt outward from the gap
     master.call(function () { spawnRushBubbles(rushEl, 60); }, [], '<-0.05');
 
-    // TEAR: the two halves split apart along the midline
+    // Halves separate, anchored at the same moment ('tear' label)
+    master.addLabel('tear', '<');
     master.to(topEl,    { yPercent: -100, duration: 0.7, ease: 'power3.in' }, 'tear')
           .to(bottomEl, { yPercent:  100, duration: 0.7, ease: 'power3.in' }, 'tear')
-          .to(crackEl,  { opacity: 0,     duration: 0.3, ease: 'steps(3)' }, 'tear+=0.1')
-          .to(skipEl,   { opacity: 0,     duration: 0.15 }, 'tear');
+          .to(crackEl,  { opacity: 0,     duration: 0.30, ease: 'steps(3)' }, 'tear+=0.1')
+          .to(skipEl,   { opacity: 0,     duration: 0.15 }, 'tear')
+          .to(fishEl,   { opacity: 0,     duration: 0.2, ease: 'steps(3)' }, 'tear+=0.35');
 
-    // Cue the hero entrance ~0.15s into the tear
+    // Cue hero entrance ~0.15s into the tear (overlap so no blank frame)
     master.call(cueHero, [], 'tear+=0.15');
 
     // ── Skip handler ─────────────────────────────────────────────────
